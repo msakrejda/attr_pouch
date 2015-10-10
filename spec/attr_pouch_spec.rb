@@ -26,6 +26,14 @@ describe AttrPouch do
       pouchy.reload
       expect(pouchy.foo).to eq('bar')
     end
+
+    it "marks the field as modified" do
+      pouchy.foo = 'bar'
+      result = pouchy.save_changes
+      expect(result).to_not be_nil
+      pouchy.reload
+      expect(pouchy.foo).to eq('bar')
+    end
   end
 
   context "with an attribute that is not a simple method name" do
