@@ -1,0 +1,12 @@
+language: ruby
+cache: bundler
+before_script: createdb attr_pouch
+sudo: false
+script: DATABASE_URL="postgres:///attr_pouch" bundle exec rspec
+addons:
+  postgresql: "9.3"
+env:
+rvm:
+  - 2.2.2
+notifications:
+  email: false
