@@ -98,28 +98,13 @@ describe AttrPouch do
   context "with an attribute that is not a simple method name" do
     it "raises an error when defining the class" do
       expect do
-        Class.new(Sequel::Model(:items)) do
-          include AttrPouch
-
-          pouch(:attrs) do
-            field :"nope, not valid",  String
-          end
-        end
+        make_pouchy(:"nope, not valid", String)
       end.to raise_error(AttrPouch::InvalidFieldError)
     end
   end
 
-  context "with an attribute that ends in a question mark" do
-    let(:bepouched) do
-      Class.new(Sequel::Model(:items)) do
-        include AttrPouch
-
-        pouch(:attrs) do
-          field :foo?, :bool
-        end
-      end
-    end
-    let(:pouchy) { bepouched.create }
+  context "with an attribute name that ends in a question mark" do
+    let(:pouchy) { make_pouchy(:foo?, :bool) }
 
     it "generates normal getter" do
       expect(pouchy.foo?).to be_nil
