@@ -21,7 +21,7 @@ module AttrPouch
 
     def initialize(name, type, opts)
       @name = name
-      @type = 
+      @type = to_class(type)
       @raw_type = type
       @opts = opts
     end
@@ -29,8 +29,8 @@ module AttrPouch
     private
 
     def to_class(type)
-      return type if type.is_a?(Class)
-      name.split('::').inject(Object) do |moodule, klass|
+      return type if type.is_a?(Class) || type.is_a?(Symbol)
+      type.to_s.split('::').inject(Object) do |moodule, klass|
         moodule.const_get(klass)
       end
     end

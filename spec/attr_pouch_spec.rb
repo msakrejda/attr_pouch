@@ -82,6 +82,19 @@ describe AttrPouch do
     end
   end
 
+  context "with a Sequel::Model attribute provided as a String" do
+    let(:model_class) { module A; class B < Sequel::Model(:items); end; end; A::B }
+    let(:pouchy)      { make_pouchy(:foo, model_class.name) }
+
+    it "preserves the type" do
+      new_model = model_class.create
+      pouchy.update(foo: new_model)
+      pouchy.reload
+      expect(pouchy.foo).to be_a(model_class)
+      expect(pouchy.foo.id).to eq(new_model.id)
+    end
+  end
+
   context "with an attribute that is not a simple method name" do
     it "raises an error when defining the class" do
       expect do
