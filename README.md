@@ -2,7 +2,7 @@
 
 # AttrPouch
 
-Schema-less attribute storage plugin for Sequel
+Schema-less attribute storage plugin for
 [Sequel](https://github.com/jeremyevans/sequel.git).
 
 
