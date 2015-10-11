@@ -1,12 +1,15 @@
 # TODO thoughts:
-  - required fields
-  - defaults for fields
-  - opts for storing higher precision for float / timestamps
-  - optionally store timestamps as epoch or other format
   - infer default field types from their names
+  - opt: required
+  - opt: default
+  - opt: deletable
+  - opt: immutable
+  - opt: store timestamps as epoch or other format
+  - opt ("was:"?) to allow rename fields
   - dataset methods for querying
   - support for storage in JSON / plain text / arbitrary backing format
-  - defaults on create for fields
+  - opt: higher precision for floats
+  - opt: write defaults on create for fields
   - rack-like interface for chained encoders/decoders or maybe that's overkill
   - more efficient updates via merging with structure in-database field-by-field
   - encryption and/or interop with attr_vault
