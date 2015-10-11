@@ -1,7 +1,6 @@
 require 'spec_helper'
 
 describe AttrPouch do
-
   def make_pouchy(field_name, field_type, opts={})
     bepouched = Class.new(Sequel::Model(:items)) do
       include AttrPouch
@@ -69,6 +68,17 @@ describe AttrPouch do
     end
   end
 
+  context "with a Time attribute" do
+    let(:pouchy) { make_pouchy(:foo, Time) }
+
+    it "preserves the type" do
+      now = Time.now
+      pouchy.update(foo: now)
+      pouchy.reload
+      expect(pouchy.foo).to eq(now)
+    end
+  end
+
   context "with a Sequel::Model attribute" do
     let(:model_class) { Class.new(Sequel::Model(:items)) }
     let(:pouchy)      { make_pouchy(:foo, model_class) }
@@ -113,6 +123,39 @@ describe AttrPouch do
     it "generates setter by stripping trailing question mark" do
       pouchy.foo = true
       expect(pouchy.foo?).to be true
+    end
+  end
+
+  context "with multiple attributes" do
+    let(:bepouched) do
+      Class.new(Sequel::Model(:items)) do
+        include AttrPouch
+
+        pouch(:attrs) do
+          field :f1, String
+          field :f2, :bool
+          field :f3, Integer
+        end
+      end
+    end
+    let(:pouchy) { bepouched.create }
+
+    it "allows updating multiple attributes simultaneously" do
+      pouchy.update(f1: 'hello', f2: true, f3: 42)
+      expect(pouchy.f1).to eq('hello')
+      expect(pouchy.f2).to eq(true)
+      expect(pouchy.f3).to eq(42)
+    end
+
+    it "allows updating multiple attributes sequentially" do
+      pouchy.f1 = 'hello'
+      pouchy.f2 = true
+      pouchy.f3 = 42
+      pouchy.save_changes
+      pouchy.reload
+      expect(pouchy.f1).to eq('hello')
+      expect(pouchy.f2).to eq(true)
+      expect(pouchy.f3).to eq(42)
     end
   end
 end

@@ -168,7 +168,7 @@ AttrPouch.configure do |config|
   end
 
   config.encode(Time) do |field, store, value|
-    store[field.name] = value.to_s
+    store[field.name] = value.strftime('%Y-%m-%d %H:%M:%S.%N')
   end
   config.decode(Time) do |field, store|
     Time.parse(store[field.name])
@@ -185,7 +185,6 @@ AttrPouch.configure do |config|
     klass = field.type
     store[field.name] = value[klass.primary_key]
   end
-
   config.decode(Sequel::Model) do |field, store|
     klass = field.type
     klass[store[field.name]]

@@ -1,5 +1,4 @@
 # TODO thoughts:
-  - decent spec coverage
   - required fields
   - defaults for fields
   - opts for storing higher precision for float / timestamps
