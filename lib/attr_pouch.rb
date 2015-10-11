@@ -42,11 +42,11 @@ module AttrPouch
       @decoders = {}
     end
 
-    def encode(type, &block)
+    def write(type, &block)
       @encoders[type] = block
     end
 
-    def decode(type, &block)
+    def read(type, &block)
       @decoders[type] = block
     end
 
@@ -146,46 +146,46 @@ module AttrPouch
 end
 
 AttrPouch.configure do |config|
-  config.encode(String) do |field, store, value|
+  config.write(String) do |field, store, value|
     store[field.name] = value.to_s
   end
-  config.decode(String) do |field, store|
+  config.read(String) do |field, store|
     store[field.name]
   end
 
-  config.encode(Integer) do |field, store, value|
+  config.write(Integer) do |field, store, value|
     store[field.name] = value
   end
-  config.decode(Integer) do |field, store|
+  config.read(Integer) do |field, store|
     Integer(store[field.name])
   end
   
-  config.encode(Float) do |field, store, value|
+  config.write(Float) do |field, store, value|
     store[field.name] = value
   end
-  config.decode(Float) do |field, store|
+  config.read(Float) do |field, store|
     Float(store[field.name])
   end
 
-  config.encode(Time) do |field, store, value|
+  config.write(Time) do |field, store, value|
     store[field.name] = value.strftime('%Y-%m-%d %H:%M:%S.%N')
   end
-  config.decode(Time) do |field, store|
+  config.read(Time) do |field, store|
     Time.parse(store[field.name])
   end
 
-  config.encode(:bool) do |field, store, value|
+  config.write(:bool) do |field, store, value|
     store[field.name] = value.to_s
   end
-  config.decode(:bool) do |field, store, value|
+  config.read(:bool) do |field, store, value|
     store[field.name] == 'true'
   end
 
-  config.encode(Sequel::Model) do |field, store, value|
+  config.write(Sequel::Model) do |field, store, value|
     klass = field.type
     store[field.name] = value[klass.primary_key]
   end
-  config.decode(Sequel::Model) do |field, store|
+  config.read(Sequel::Model) do |field, store|
     klass = field.type
     klass[store[field.name]]
   end
