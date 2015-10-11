@@ -40,6 +40,23 @@ module AttrPouch
     def initialize
       @encoders = {}
       @decoders = {}
+      @type_inferrer = nil
+    end
+
+    def infer_type(field=nil, &block)
+      if block_given?
+        @type_inferrer = block
+        return
+      end
+      if @type_inferrer.nil?
+        raise InvalidFieldError, "Could not infer type of field #{field.inspect}"
+      else
+        type = @type_inferrer.call(field)
+        if type.nil?
+          raise InvalidFieldError, "Could not infer type of field #{field.inspect}"
+        end
+        type
+      end
     end
 
     def write(type, &block)
@@ -85,6 +102,10 @@ module AttrPouch
         raise InvalidFieldError, "Field name must match #{VALID_FIELD_NAME_REGEXP}"
       end
       field = Field.new(name, type, opts)
+      if type.nil?
+        type = AttrPouch.config.infer_type(field)
+        field = Field.new(name, type, opts)
+      end
 
       decoder = AttrPouch.config.find_decoder(field)
       encoder = AttrPouch.config.find_encoder(field)
@@ -188,5 +209,18 @@ AttrPouch.configure do |config|
   config.read(Sequel::Model) do |field, store|
     klass = field.type
     klass[store[field.name]]
+  end
+
+  config.infer_type do |field|
+    case field.name
+    when /\Anum_|_(?:count|size)\z/
+      Integer
+    when /_(?:at|by)\z/
+      Time
+    when /\?\z/
+      :bool
+    else
+      String
+    end
   end
 end

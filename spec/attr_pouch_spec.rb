@@ -167,4 +167,50 @@ describe AttrPouch do
       expect(pouchy.raw_foo).to eq('2.78')
     end
   end
+
+  context "inferring field types" do
+    it "infers field named num_foo to be of type Integer" do
+      pouchy = make_pouchy(:num_foo, nil)
+      pouchy.update(num_foo: 42)
+      expect(pouchy.num_foo).to eq(42)
+    end
+
+    it "infers field named foo_count to be of type Integer" do
+      pouchy = make_pouchy(:foo_count, nil)
+      pouchy.update(foo_count: 42)
+      expect(pouchy.foo_count).to eq(42)
+    end
+
+    it "infers field named foo_size to be of type Integer" do
+      pouchy = make_pouchy(:foo_size, nil)
+      pouchy.update(foo_size: 42)
+      expect(pouchy.foo_size).to eq(42)
+    end
+
+    it "infers field named foo? to be of type :bool" do
+      pouchy = make_pouchy(:foo?, nil)
+      pouchy.update(foo: true)
+      expect(pouchy.foo?).to be true
+    end
+
+    it "infers field named foo_at to be of type Time" do
+      now = Time.now
+      pouchy = make_pouchy(:foo_at, nil)
+      pouchy.update(foo_at: now)
+      expect(pouchy.foo_at).to eq(now)
+    end
+
+    it "infers field named foo_by to be of type Time" do
+      now = Time.now
+      pouchy = make_pouchy(:foo_by, nil)
+      pouchy.update(foo_by: now)
+      expect(pouchy.foo_by).to eq(now)
+    end
+
+    it "infers field named foo to be of type String" do
+      pouchy = make_pouchy(:foo, nil)
+      pouchy.update(foo: 'hello')
+      expect(pouchy.foo).to eq('hello')
+    end
+  end
 end
