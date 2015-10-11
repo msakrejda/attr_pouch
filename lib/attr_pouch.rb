@@ -117,7 +117,7 @@ module AttrPouch
           define_method(raw_name) do
             store = self[storage_field]
             unless store.nil?
-              store[raw_name]
+              store[name]
             end
           end
 
@@ -125,7 +125,7 @@ module AttrPouch
             store = self[storage_field]
             was_nil = store.nil?
             store = default if was_nil
-            store[raw_name] = value
+            store[name] = value
             if was_nil
               self[storage_field] = store
             else

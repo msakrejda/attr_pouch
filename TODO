@@ -6,6 +6,7 @@
   - infer default field types from their names
   - dataset methods for querying
   - support for storage in JSON / plain text / arbitrary backing format
+  - defaults on create for fields
   - rack-like interface for chained encoders/decoders or maybe that's overkill
   - more efficient updates via merging with structure in-database field-by-field
   - encryption and/or interop with attr_vault

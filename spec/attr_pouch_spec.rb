@@ -158,4 +158,13 @@ describe AttrPouch do
       expect(pouchy.f3).to eq(42)
     end
   end
+
+  context "with the raw_field option" do
+    let(:pouchy) { make_pouchy(:foo, Float, raw_field: :raw_foo) }
+
+    it "supports direct access to the encoded value" do
+      pouchy.update(foo: 2.78)
+      expect(pouchy.raw_foo).to eq('2.78')
+    end
+  end
 end
