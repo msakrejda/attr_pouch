@@ -93,8 +93,8 @@ module AttrPouch
 
     def initialize(host, storage_field, default_pouch: Sequel.hstore({}))
       @host = host
-      @default_pouch = default_pouch
       @storage_field = storage_field
+      @default_pouch = default_pouch
     end
 
     def field(name, type, opts={})
