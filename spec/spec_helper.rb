@@ -8,8 +8,9 @@
 require 'bundler'
 require 'attr_pouch'
 
-Sequel.extension :pg_hstore, :pg_hstore_ops
 conn = Sequel.connect(ENV['DATABASE_URL'])
+conn.run 'CREATE EXTENSION IF NOT EXISTS "hstore"'
+conn.extension :pg_hstore
 
 conn.run 'CREATE EXTENSION IF NOT EXISTS "hstore"'
 conn.run 'DROP TABLE IF EXISTS items'
