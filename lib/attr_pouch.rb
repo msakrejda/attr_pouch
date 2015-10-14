@@ -26,6 +26,10 @@ module AttrPouch
       @opts = opts
     end
 
+    def alias_as(new_name)
+      self.class.new(new_name, type, opts)
+    end
+
     def required?
       opts.fetch(:required, false)
     end
@@ -44,6 +48,15 @@ module AttrPouch
 
     def deletable?
       opts.fetch(:deletable, false)
+    end
+
+    def previous_aliases
+      was = opts.fetch(:was, [])
+      was.is_a?(Array) ? was : [ was ]
+    end
+
+    def all_names
+      [ name ] + previous_aliases
     end
 
     private
@@ -127,6 +140,7 @@ module AttrPouch
       if opts.has_key?(:required) && opts.has_key?(:deletable)
         raise InvalidFieldError, "Required field cannot be deletable"
       end
+
       field = Field.new(name, type, opts)
       if type.nil?
         type = AttrPouch.config.infer_type(field)
@@ -141,7 +155,8 @@ module AttrPouch
       @host.class_eval do
         define_method(name) do
           store = self[storage_field]
-          if store.nil? || !store.has_key?(field.name)
+          present_as = field.all_names.find { |n| store.has_key?(n) }
+          if store.nil? || present_as.nil?
             if field.required?
               raise MissingRequiredFieldError,
                     "Expected field #{field.inspect} to exist"
@@ -149,7 +164,7 @@ module AttrPouch
               return field.default
             end
           else
-            decoder.call(field, store)
+            decoder.call(field.alias_as(present_as), store)
           end
         end
 
@@ -161,6 +176,7 @@ module AttrPouch
             raise ImmutableFieldUpdateError if field.immutable?
           end
           encoder.call(field, store, value)
+          field.previous_aliases.each { |a| store.delete(a) }
           if was_nil
             self[storage_field] = store
           else
@@ -173,7 +189,7 @@ module AttrPouch
           define_method(delete_method) do
             store = self[storage_field]
             unless store.nil?
-              store.delete(field.name)
+              field.all_names.each { |a| store.delete(a) }
               modified! storage_field
             end
           end
@@ -189,13 +205,14 @@ module AttrPouch
 
           define_method(raw_name) do
             store = self[storage_field]
-            if store.nil? || !store.has_key?(field.name)
+            present_as = field.all_names.find { |n| store.has_key?(n) }
+            if store.nil? || present_as.nil?
               if field.required?
                 raise MissingRequiredFieldError,
                       "Expected field #{field.inspect} to exist"
               end
             else
-              store[name]
+              store[present_as]
             end
           end
 
@@ -207,6 +224,8 @@ module AttrPouch
               raise ImmutableFieldUpdateError if field.immutable?
             end
             store[name] = value
+            field.previous_aliases.each { |a| store.delete(a) }
+
             if was_nil
               self[storage_field] = store
             else

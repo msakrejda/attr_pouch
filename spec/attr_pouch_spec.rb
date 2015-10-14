@@ -223,34 +223,14 @@ describe AttrPouch do
         make_pouchy(:foo, Integer, deletable: true, required: true)
       end.to raise_error(AttrPouch::InvalidFieldError)
     end
-  end
 
-  context "with the raw_field option" do
-    let(:pouchy) { make_pouchy(:foo, Float, raw_field: :raw_foo) }
+    it "also deletes aliases from the was option" do
+      pouchy = make_pouchy(:foo, Integer, deletable: true, was: :bar)
 
-    it "supports direct access to the encoded value" do
-      pouchy.update(foo: 2.78)
-      expect(pouchy.raw_foo).to eq('2.78')
-    end
-
-    it "ensures the raw_field accessor obeys the 'required' option" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, required: true)
-      expect do
-        pouchy.raw_foo
-      end.to raise_error(AttrPouch::MissingRequiredFieldError)
-    end
-
-    it "ensures the raw_field accessor obeys the 'immutable' option" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, immutable: true)
-      pouchy.update(foo: 42)
-      expect do
-        pouchy.update(foo: 43)
-      end.to raise_error(AttrPouch::ImmutableFieldUpdateError)
-    end
-
-    it "ensures the raw_field accessor ignores the 'default' option" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, default: 7.2)
-      expect(pouchy.raw_foo).to be_nil
+      pouchy.update(attrs: Sequel.hstore(bar: 42))
+      expect(pouchy.foo).to eq(42)
+      pouchy.delete_foo
+      expect(pouchy.attrs).not_to have_key(:bar)
     end
   end
 
@@ -266,6 +246,75 @@ describe AttrPouch do
       expect do
         pouchy.update(foo: 43)
       end.to raise_error(AttrPouch::ImmutableFieldUpdateError)
+    end
+  end
+
+  context "with the was option" do
+    let(:pouchy) { make_pouchy(:foo, String, was: %w(bar baz)) }
+
+    it "supports aliases for renaming fields" do
+      pouchy.update(attrs: Sequel.hstore(bar: 'hello'))
+      expect(pouchy.foo).to eq('hello')
+    end
+
+    it "supports multiple aliases" do
+      pouchy.update(attrs: Sequel.hstore(baz: 'hello'))
+      expect(pouchy.foo).to eq('hello')
+    end
+
+    it "deletes old names when writing the current one" do
+      pouchy.update(attrs: Sequel.hstore(bar: 'hello'))
+      pouchy.update(foo: 'goodbye')
+      expect(pouchy.attrs).not_to have_key(:bar)
+    end
+
+    it "supports a shorthand for the single-alias case" do
+      pouchy = make_pouchy(:foo, String, was: :bar)
+      pouchy.update(attrs: Sequel.hstore(bar: 'hello'))
+      expect(pouchy.foo).to eq('hello')
+    end
+  end
+
+  context "with the raw_field option" do
+    let(:pouchy) { make_pouchy(:foo, Float, raw_field: :raw_foo) }
+
+    it "supports direct access to the encoded value" do
+      pouchy.update(foo: 2.78)
+      expect(pouchy.raw_foo).to eq('2.78')
+    end
+
+    it "obeys the 'required' option" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, required: true)
+      expect do
+        pouchy.raw_foo
+      end.to raise_error(AttrPouch::MissingRequiredFieldError)
+    end
+
+    it "obeys the 'immutable' option" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, immutable: true)
+      pouchy.update(foo: 42)
+      expect do
+        pouchy.update(foo: 43)
+      end.to raise_error(AttrPouch::ImmutableFieldUpdateError)
+    end
+
+    it "ignores the 'default' option" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, default: 7.2)
+      expect(pouchy.raw_foo).to be_nil
+    end
+
+    it "obeys the was option when reading" do
+      pouchy = make_pouchy(:foo, String, raw_field: :raw_foo, was: :bar)
+      expect(pouchy.raw_foo).to be_nil
+      pouchy.update(attrs: Sequel.hstore(bar: 'hello'))
+      expect(pouchy.raw_foo).to eq('hello')
+    end
+
+    it "obeys the was option when writing" do
+      pouchy = make_pouchy(:foo, String, raw_field: :raw_foo, was: :bar)
+      pouchy.update(attrs: Sequel.hstore(bar: 'hello'))
+      pouchy.update(raw_foo: 'goodbye')
+      expect(pouchy.attrs).not_to have_key(:bar)
     end
   end
 
