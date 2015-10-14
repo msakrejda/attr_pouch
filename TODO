@@ -1,5 +1,4 @@
 # TODO thoughts:
-  - opt ("was:"?) to allow rename fields
   - dataset methods for querying
   - refactor Config
   - docs
