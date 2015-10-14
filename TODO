@@ -5,10 +5,11 @@
   - opt: store timestamps as epoch or other format
   - opt ("was:"?) to allow rename fields
   - dataset methods for querying
+  - refactor Config
+  - docs
   - support for storage in JSON / plain text / arbitrary backing format
   - opt: higher precision for floats
-  - opt: write defaults on create for fields
-  - rack-like interface for chained encoders/decoders or maybe that's overkill
+  - opt: eager_default on create for fields
   - more efficient updates via merging with structure in-database field-by-field
   - encryption and/or interop with attr_vault
   - per-field encryption
