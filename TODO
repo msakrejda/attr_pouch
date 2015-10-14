@@ -1,5 +1,4 @@
 # TODO thoughts:
-  - opt: default
   - opt: deletable
   - opt: immutable
   - opt: store timestamps as epoch or other format

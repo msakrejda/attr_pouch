@@ -159,15 +159,6 @@ describe AttrPouch do
     end
   end
 
-  context "with the raw_field option" do
-    let(:pouchy) { make_pouchy(:foo, Float, raw_field: :raw_foo) }
-
-    it "supports direct access to the encoded value" do
-      pouchy.update(foo: 2.78)
-      expect(pouchy.raw_foo).to eq('2.78')
-    end
-  end
-
   context "with the required option" do
     let(:pouchy) { make_pouchy(:foo, String, required: true) }
 
@@ -177,6 +168,46 @@ describe AttrPouch do
     end
     it "raises if the value is read before it is ever written" do
       expect { pouchy.foo }.to raise_error(AttrPouch::MissingRequiredFieldError)
+    end
+  end
+
+  context "with the default option" do
+    let(:pouchy) { make_pouchy(:foo, Integer, default: 42) }
+
+    it "returns the default when the field is unset" do
+      expect(pouchy.foo).to eq(42)
+    end
+
+    it "returns the actual value when the field is set" do
+      pouchy.update(foo: 12)
+      expect(pouchy.foo).to eq(12)
+    end
+
+    it "is unsupported with the required option" do
+      expect do
+        make_pouchy(:foo, Integer, default: 42, required: true)
+      end.to raise_error(AttrPouch::InvalidFieldError)
+    end
+  end
+
+  context "with the raw_field option" do
+    let(:pouchy) { make_pouchy(:foo, Float, raw_field: :raw_foo) }
+
+    it "supports direct access to the encoded value" do
+      pouchy.update(foo: 2.78)
+      expect(pouchy.raw_foo).to eq('2.78')
+    end
+
+    it "ensures the raw_field accessor obeys the 'required' option" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, required: true)
+      expect do
+        pouchy.raw_foo
+      end.to raise_error(AttrPouch::MissingRequiredFieldError)
+    end
+
+    it "ensures the raw_field accessor ignores the 'default' option" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, default: 7.2)
+      expect(pouchy.raw_foo).to be_nil
     end
   end
 

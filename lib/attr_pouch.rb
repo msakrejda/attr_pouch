@@ -30,6 +30,14 @@ module AttrPouch
       opts.fetch(:required, false)
     end
 
+    def has_default?
+      opts.has_key?(:default)
+    end
+
+    def default
+      opts.fetch(:default)
+    end
+
     private
 
     def to_class(type)
@@ -105,6 +113,9 @@ module AttrPouch
       unless VALID_FIELD_NAME_REGEXP.match(name)
         raise InvalidFieldError, "Field name must match #{VALID_FIELD_NAME_REGEXP}"
       end
+      if opts.has_key?(:required) && opts.has_key?(:default)
+        raise InvalidFieldError, "Required field cannot have a default"
+      end
       field = Field.new(name, type, opts)
       if type.nil?
         type = AttrPouch.config.infer_type(field)
@@ -119,10 +130,14 @@ module AttrPouch
       @host.class_eval do
         define_method(name) do
           store = self[storage_field]
-          if field.required? && (store.nil? || !store.has_key?(field.name))
-            raise MissingRequiredFieldError, "Expected field #{field.inspect} to exist"
-          end
-          unless store.nil?
+          if store.nil? || !store.has_key?(field.name)
+            if field.required?
+              raise MissingRequiredFieldError,
+                    "Expected field #{field.inspect} to exist"
+            elsif field.has_default?
+              return field.default
+            end
+          else
             decoder.call(field, store)
           end
         end
@@ -144,10 +159,12 @@ module AttrPouch
 
           define_method(raw_name) do
             store = self[storage_field]
-            if field.required? && (store.nil? || !store.has_key?(field.name))
-              raise MissingRequiredFieldError, "Expected field #{field.inspect} to exist"
-            end
-            unless store.nil?
+            if store.nil? || !store.has_key?(field.name)
+              if field.required?
+                raise MissingRequiredFieldError,
+                      "Expected field #{field.inspect} to exist"
+              end
+            else
               store[name]
             end
           end
