@@ -144,6 +144,9 @@ module AttrPouch
 
           define_method(raw_name) do
             store = self[storage_field]
+            if field.required? && (store.nil? || !store.has_key?(field.name))
+              raise MissingRequiredFieldError, "Expected field #{field.inspect} to exist"
+            end
             unless store.nil?
               store[name]
             end
