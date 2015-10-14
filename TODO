@@ -1,6 +1,4 @@
 # TODO thoughts:
-  - infer default field types from their names
-  - opt: required
   - opt: default
   - opt: deletable
   - opt: immutable

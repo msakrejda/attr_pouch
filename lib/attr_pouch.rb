@@ -26,6 +26,10 @@ module AttrPouch
       @opts = opts
     end
 
+    def required?
+      opts.fetch(:required, false)
+    end
+
     private
 
     def to_class(type)
@@ -115,6 +119,9 @@ module AttrPouch
       @host.class_eval do
         define_method(name) do
           store = self[storage_field]
+          if field.required? && (store.nil? || !store.has_key?(field.name))
+            raise MissingRequiredFieldError, "Expected field #{field.inspect} to exist"
+          end
           unless store.nil?
             decoder.call(field, store)
           end

@@ -168,6 +168,18 @@ describe AttrPouch do
     end
   end
 
+  context "with the required option" do
+    let(:pouchy) { make_pouchy(:foo, String, required: true) }
+
+    it "accepts writes before reads" do
+      pouchy.update(foo: 'hello')
+      expect(pouchy.foo).to eq('hello')
+    end
+    it "raises if the value is read before it is ever written" do
+      expect { pouchy.foo }.to raise_error(AttrPouch::MissingRequiredFieldError)
+    end
+  end
+
   context "inferring field types" do
     it "infers field named num_foo to be of type Integer" do
       pouchy = make_pouchy(:num_foo, nil)
