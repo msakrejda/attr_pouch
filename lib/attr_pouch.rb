@@ -242,6 +242,17 @@ module AttrPouch
       pouch = Pouch.new(self, field)
       pouch.instance_eval(&block)
     end
+    # Add a dataset_method `where_pouch_field(pouch, expr_hash)` that
+    # behaves like `where` does for normal fields. A start is
+    #
+    #   where(Sequel.hstore_op(pouch.field).contains(expr_hash)))
+    #
+    # but this doesn't behave how one might expect with
+    #  - arrays: the array is serialized to a single hstore element
+    #     (unlike the automatic IN translation for native attributes)
+    #  - nil: the hstore column is checked for the existence of a key
+    #    pointing to a null value: the absence of a key is not considered
+    #    equivalent
   end
 end
 
