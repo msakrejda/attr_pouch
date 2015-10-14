@@ -4,4 +4,5 @@ module AttrPouch
   class MissingCodecError < Error; end
   class InvalidFieldError < Error; end
   class MissingRequiredFieldError < Error; end
+  class ImmutableFieldUpdateError < Error; end
 end

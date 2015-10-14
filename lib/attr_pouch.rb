@@ -38,6 +38,14 @@ module AttrPouch
       opts.fetch(:default)
     end
 
+    def immutable?
+      opts.fetch(:immutable, false)
+    end
+
+    def deletable?
+      opts.fetch(:deletable, false)
+    end
+
     private
 
     def to_class(type)
@@ -149,6 +157,9 @@ module AttrPouch
           store = self[storage_field]
           was_nil = store.nil?
           store = default if was_nil
+          if store.has_key?(field.name)
+            raise ImmutableFieldUpdateError if field.immutable?
+          end
           encoder.call(field, store, value)
           if was_nil
             self[storage_field] = store
@@ -157,8 +168,9 @@ module AttrPouch
           end
         end
 
-        if opts.has_key?(:deletable)
-          define_method("delete_#{name.to_s.sub(/\?\z/, '')}") do
+        if field.deletable?
+          delete_method = "delete_#{name.to_s.sub(/\?\z/, '')}"
+          define_method(delete_method) do
             store = self[storage_field]
             unless store.nil?
               store.delete(field.name)
@@ -166,8 +178,8 @@ module AttrPouch
             end
           end
 
-          define_method("delete_#{name.to_s.sub(/\?\z/, '')}!") do
-            self.public_send("delete_#{name.to_s.sub(/\?\z/, '')}")
+          define_method("#{delete_method}!") do
+            self.public_send(delete_method)
             save_changes
           end
         end
@@ -191,6 +203,9 @@ module AttrPouch
             store = self[storage_field]
             was_nil = store.nil?
             store = default if was_nil
+            if store.has_key?(field.name)
+              raise ImmutableFieldUpdateError if field.immutable?
+            end
             store[name] = value
             if was_nil
               self[storage_field] = store

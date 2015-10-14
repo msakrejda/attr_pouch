@@ -1,5 +1,4 @@
 # TODO thoughts:
-  - opt: immutable
   - opt: store timestamps as epoch or other format
   - opt ("was:"?) to allow rename fields
   - dataset methods for querying

@@ -240,9 +240,32 @@ describe AttrPouch do
       end.to raise_error(AttrPouch::MissingRequiredFieldError)
     end
 
+    it "ensures the raw_field accessor obeys the 'immutable' option" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, immutable: true)
+      pouchy.update(foo: 42)
+      expect do
+        pouchy.update(foo: 43)
+      end.to raise_error(AttrPouch::ImmutableFieldUpdateError)
+    end
+
     it "ensures the raw_field accessor ignores the 'default' option" do
       pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, default: 7.2)
       expect(pouchy.raw_foo).to be_nil
+    end
+  end
+
+  context "with the immutable option" do
+    let(:pouchy) { make_pouchy(:foo, Integer, immutable: true) }
+
+    it "it allows setting the field value for the first time" do
+      pouchy.update(foo: 42)
+    end
+
+    it "forbids subsequent modifications to the field" do
+      pouchy.update(foo: 42)
+      expect do
+        pouchy.update(foo: 43)
+      end.to raise_error(AttrPouch::ImmutableFieldUpdateError)
     end
   end
 
