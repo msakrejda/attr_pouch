@@ -116,6 +116,9 @@ module AttrPouch
       if opts.has_key?(:required) && opts.has_key?(:default)
         raise InvalidFieldError, "Required field cannot have a default"
       end
+      if opts.has_key?(:required) && opts.has_key?(:deletable)
+        raise InvalidFieldError, "Required field cannot be deletable"
+      end
       field = Field.new(name, type, opts)
       if type.nil?
         type = AttrPouch.config.infer_type(field)
@@ -151,6 +154,21 @@ module AttrPouch
             self[storage_field] = store
           else
             modified! storage_field
+          end
+        end
+
+        if opts.has_key?(:deletable)
+          define_method("delete_#{name.to_s.sub(/\?\z/, '')}") do
+            store = self[storage_field]
+            unless store.nil?
+              store.delete(field.name)
+              modified! storage_field
+            end
+          end
+
+          define_method("delete_#{name.to_s.sub(/\?\z/, '')}!") do
+            self.public_send("delete_#{name.to_s.sub(/\?\z/, '')}")
+            save_changes
           end
         end
 

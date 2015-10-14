@@ -17,7 +17,7 @@ conn.run 'DROP TABLE IF EXISTS items'
 conn.run <<-EOF
 CREATE TABLE items(
   id serial primary key,
-  attrs hstore
+  attrs hstore default ''
 )
 EOF
 

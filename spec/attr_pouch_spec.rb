@@ -166,6 +166,7 @@ describe AttrPouch do
       pouchy.update(foo: 'hello')
       expect(pouchy.foo).to eq('hello')
     end
+
     it "raises if the value is read before it is ever written" do
       expect { pouchy.foo }.to raise_error(AttrPouch::MissingRequiredFieldError)
     end
@@ -186,6 +187,40 @@ describe AttrPouch do
     it "is unsupported with the required option" do
       expect do
         make_pouchy(:foo, Integer, default: 42, required: true)
+      end.to raise_error(AttrPouch::InvalidFieldError)
+    end
+  end
+
+  context "with the deletable option" do
+    let(:pouchy) { make_pouchy(:foo, Integer, deletable: true) }
+
+    it "supports deleting existing fields" do
+      pouchy.update(foo: 42)
+      expect(pouchy.foo).to eq(42)
+      pouchy.delete_foo
+      expect(pouchy.attrs).not_to have_key(:foo)
+      pouchy.reload
+      expect(pouchy.foo).to eq(42)
+    end
+
+    it "supports deleting existing fields and immediately persisting changes" do
+      pouchy.update(foo: 42)
+      expect(pouchy.foo).to eq(42)
+      pouchy.delete_foo!
+      expect(pouchy.attrs).not_to have_key(:foo)
+      pouchy.reload
+      expect(pouchy.attrs).not_to have_key(:foo)
+    end
+
+    it "ignores deleting non-existing fields" do
+      expect(pouchy.attrs).not_to have_key(:foo)
+      pouchy.delete_foo
+      expect(pouchy.attrs).not_to have_key(:foo)
+    end
+
+    it "is unsupported with the required option" do
+      expect do
+        make_pouchy(:foo, Integer, deletable: true, required: true)
       end.to raise_error(AttrPouch::InvalidFieldError)
     end
   end
