@@ -1,4 +1,5 @@
 # TODO thoughts:
+  - strip 'optional' option; rely on sentinel default default, and deletable
   - dataset methods for querying
   - refactor Config
   - docs

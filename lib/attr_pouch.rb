@@ -30,8 +30,8 @@ module AttrPouch
       self.class.new(new_name, type, opts)
     end
 
-    def required?
-      opts.fetch(:required, false)
+    def optional?
+      opts.fetch(:optional, false)
     end
 
     def has_default?
@@ -134,11 +134,13 @@ module AttrPouch
       unless VALID_FIELD_NAME_REGEXP.match(name)
         raise InvalidFieldError, "Field name must match #{VALID_FIELD_NAME_REGEXP}"
       end
-      if opts.has_key?(:required) && opts.has_key?(:default)
-        raise InvalidFieldError, "Required field cannot have a default"
-      end
-      if opts.has_key?(:required) && opts.has_key?(:deletable)
-        raise InvalidFieldError, "Required field cannot be deletable"
+      unless opts.has_key?(:optional)
+        if opts.has_key?(:default)
+          raise InvalidFieldError, "Only optional fields can have a default"
+        end
+        if opts.has_key?(:deletable)
+          raise InvalidFieldError, "Only optional fields can be deletable"
+        end
       end
 
       field = Field.new(name, type, opts)
@@ -157,11 +159,11 @@ module AttrPouch
           store = self[storage_field]
           present_as = field.all_names.find { |n| store.has_key?(n) }
           if store.nil? || present_as.nil?
-            if field.required?
+            if field.optional?
+              field.default
+            else
               raise MissingRequiredFieldError,
                     "Expected field #{field.inspect} to exist"
-            elsif field.has_default?
-              return field.default
             end
           else
             decoder.call(field.alias_as(present_as), store)
@@ -207,7 +209,7 @@ module AttrPouch
             store = self[storage_field]
             present_as = field.all_names.find { |n| store.has_key?(n) }
             if store.nil? || present_as.nil?
-              if field.required?
+              unless field.optional?
                 raise MissingRequiredFieldError,
                       "Expected field #{field.inspect} to exist"
               end
