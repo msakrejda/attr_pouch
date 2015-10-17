@@ -163,81 +163,72 @@ describe AttrPouch do
     end
   end
 
-  context "with the optional option" do
-    let(:pouchy) { make_pouchy(:foo, String, optional: true) }
+  context "with the default option" do
+    let(:pouchy) { make_pouchy(:foo, String, default: 'hello') }
 
-    it "accepts writes before reads" do
-      pouchy.update(foo: 'hello')
+    it "returns the default if the key is absent" do
       expect(pouchy.foo).to eq('hello')
     end
 
-    it "accepts writes before reads" do
-      pouchy.update(foo: 'hello')
-      expect(pouchy.foo).to eq('hello')
-    end
-
-    context "with the default option" do
-      let(:pouchy) { make_pouchy(:foo, String, optional: true, default: 'hello') }
-
-      it "returns the default if the key is absent" do
-        expect(pouchy.foo).to eq('hello')
-      end
-
-      it "returns the value if the key is present" do
-        pouchy.update(foo: 'goodbye')
-        expect(pouchy.foo).to eq('goodbye')
-      end
+    it "returns the value if the key is present" do
+      pouchy.update(foo: 'goodbye')
+      expect(pouchy.foo).to eq('goodbye')
     end
 
     context "with the deletable option" do
-      let(:pouchy) { make_pouchy(:foo, Integer, optional: true, deletable: true) }
+      let(:pouchy) { make_pouchy(:foo, String, default: 'hello', deletable: true) }
 
-      it "supports deleting existing fields" do
-        pouchy.update(foo: 42)
-        expect(pouchy.foo).to eq(42)
-        pouchy.delete_foo
-        expect(pouchy.attrs).not_to have_key(:foo)
-        pouchy.reload
-        expect(pouchy.foo).to eq(42)
+      it "it returns the default if the key is absent" do
+        expect(pouchy.foo).to eq('hello')
       end
 
-      it "supports deleting existing fields and immediately persisting changes" do
-        pouchy.update(foo: 42)
-        expect(pouchy.foo).to eq(42)
-        pouchy.delete_foo!
-        expect(pouchy.attrs).not_to have_key(:foo)
-        pouchy.reload
-        expect(pouchy.attrs).not_to have_key(:foo)
-      end
-
-      it "ignores deleting non-existing fields" do
-        expect(pouchy.attrs).not_to have_key(:foo)
+      it "it returns the default after the field has been deleted" do
+        pouchy.update(foo: 'goodbye')
+        expect(pouchy.foo).to eq('goodbye')
         pouchy.delete_foo
-        expect(pouchy.attrs).not_to have_key(:foo)
-      end
-
-      it "also deletes aliases from the was option" do
-        pouchy = make_pouchy(:foo, Integer, optional: true, deletable: true, was: :bar)
-
-        pouchy.update(attrs: Sequel.hstore(bar: 42))
-        expect(pouchy.foo).to eq(42)
-        pouchy.delete_foo
-        expect(pouchy.attrs).not_to have_key(:bar)
+        expect(pouchy.foo).to eq('hello')
       end
     end
   end
 
-  context "without the optional option" do
-    it "does not support the deletable option" do
-      expect do
-        make_pouchy(:foo, Integer, deletable: true)
-      end.to raise_error(AttrPouch::InvalidFieldError)
+  context "with the deletable option" do
+    let(:pouchy) { make_pouchy(:foo, Integer, deletable: true) }
+
+    it "is nil if the field is absent" do
+      expect(pouchy.foo).to be_nil
     end
 
-    it "does not support the default option" do
-      expect do
-        make_pouchy(:foo, Integer, default: 42)
-      end.to raise_error(AttrPouch::InvalidFieldError)
+    it "supports deleting existing fields" do
+      pouchy.update(foo: 42)
+      expect(pouchy.foo).to eq(42)
+      pouchy.delete_foo
+      expect(pouchy.attrs).not_to have_key(:foo)
+      pouchy.reload
+      expect(pouchy.foo).to eq(42)
+    end
+
+    it "supports deleting existing fields and immediately persisting changes" do
+      pouchy.update(foo: 42)
+      expect(pouchy.foo).to eq(42)
+      pouchy.delete_foo!
+      expect(pouchy.attrs).not_to have_key(:foo)
+      pouchy.reload
+      expect(pouchy.attrs).not_to have_key(:foo)
+    end
+
+    it "ignores deleting absent fields" do
+      expect(pouchy.attrs).not_to have_key(:foo)
+      pouchy.delete_foo
+      expect(pouchy.attrs).not_to have_key(:foo)
+    end
+
+    it "also deletes aliases from the was option" do
+      pouchy = make_pouchy(:foo, Integer, deletable: true, was: :bar)
+
+      pouchy.update(attrs: Sequel.hstore(bar: 42))
+      expect(pouchy.foo).to eq(42)
+      pouchy.delete_foo
+      expect(pouchy.attrs).not_to have_key(:bar)
     end
   end
 
@@ -290,15 +281,10 @@ describe AttrPouch do
       expect(pouchy.raw_foo).to eq('2.78')
     end
 
-    it "is required by default" do
+    it "is required when read" do
       expect do
         pouchy.raw_foo
       end.to raise_error(AttrPouch::MissingRequiredFieldError)
-    end
-
-    it "is optional if the field is marked as optional" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, optional: true)
-      expect(pouchy.raw_foo).to be_nil
     end
 
     it "obeys the 'immutable' option" do
@@ -309,8 +295,8 @@ describe AttrPouch do
       end.to raise_error(AttrPouch::ImmutableFieldUpdateError)
     end
 
-    it "ignores the 'default' option" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, default: 7.2, optional: true)
+    it "is nil when the 'default' option is present" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, default: 7.2)
       expect(pouchy.raw_foo).to be_nil
     end
 
