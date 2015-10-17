@@ -359,4 +359,80 @@ describe AttrPouch do
       expect(pouchy.foo).to eq('hello')
     end
   end
+
+  context "with dataset methods" do
+    let(:bepouched) do
+      Class.new(Sequel::Model(:items)) do
+        include AttrPouch
+
+        pouch(:attrs) do
+           field :f1, String
+           field :f2, String
+           field :f3, String
+           field :f4, :rot13
+         end
+      end
+    end
+
+    def rot13(str)
+      str.each_byte.map do |c|
+        case c
+        when 'a'.ord..('z'.ord - 13)
+          c + 13
+        when ('z'.ord - 13)..'z'.ord
+          c - 13
+        end
+      end.map(&:chr).join
+    end
+
+    before do
+      AttrPouch.configure do |config|
+        config.write(:rot13) { |f,s,v| s[f.name] = rot13(v.to_s) }
+        config.read(:rot13) { |f,s| rot13(s[f.name]) }
+      end
+    end
+
+    it "finds the right item with a scalar field value" do
+      pouchy = bepouched.create(f1: 'foo', f2: 'bar', f3: 'baz')
+      bepouched.create(f1: 'bar', f2: 'foo', f3: 'baz') # *not* matching
+      matching = bepouched.where_pouch(:attrs, f1: 'foo').all
+      expect(matching.count).to eq(1)
+      match = matching.first
+      expect(match.id).to eq(pouchy.id)
+    end
+
+    it "finds the right item with an array field value" do
+      p1 = bepouched.create(f1: 'foo', f2: 'bar', f3: 'baz')
+      p2 = bepouched.create(f1: 'bar', f2: 'foo', f3: 'baz')
+      bepouched.create(f1: 'baz', f2: 'foo', f3: 'bar') # *not* matching
+      matching = bepouched.where_pouch(:attrs, f1: %w(foo bar)).all
+      expect(matching.count).to eq(2)
+      expect(matching.map(&:id)).to include(p1.id, p2.id)
+    end
+
+    it "finds the right item with a missing field value" do
+      p1 = bepouched.create(f2: 'bar', f3: 'baz')
+      bepouched.create(f1: '', f2: 'foo', f3: 'baz') # *not* matching
+      bepouched.create(f1: 'baz', f2: 'foo', f3: 'bar') # *not* matching
+      matching = bepouched.where_pouch(:attrs, f1: nil).all
+      expect(matching.count).to eq(1)
+      expect(matching.first.id).to eq(p1.id)
+    end
+
+    it "finds the right item with a nil field value" do
+      p1 = bepouched.create(attrs: Sequel.hstore(f1: nil))
+      matching = bepouched.where_pouch(:attrs, f1: nil).all
+      expect(matching.count).to eq(1)
+      expect(matching.first.id).to eq(p1.id)
+    end
+
+    it "uses the associated encoder for lookups" do
+      encoded = rot13('hello')
+      p1 = bepouched.create(f4: 'hello')
+      expect(p1.attrs[:f4]).to eq(encoded) # nothing behind the curtain
+      matching = bepouched.where_pouch(:attrs, f4: 'hello')
+      expect(matching.count).to eq(1)
+      expect(matching.first.id).to eq(p1.id)
+    end
+  end
 end

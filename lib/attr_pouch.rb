@@ -109,7 +109,7 @@ module AttrPouch
     end
 
     def read(store, decode: true)
-      present_as = all_names.find { |n| store.has_key?(n) }
+      present_as = all_names.find { |n| !store.nil? && store.has_key?(n) }
       if store.nil? || present_as.nil?
         if required?
           raise MissingRequiredFieldError,
@@ -129,6 +129,7 @@ module AttrPouch
     end
 
     def decode_from(store)
+      # TODO: look up encoder / decoder once
       self.class.decoders.find(method(:ensure_decoder)) do |decoder_type, _|
         self.type <= decoder_type rescue false
       end.last.call(self, store)
@@ -138,6 +139,12 @@ module AttrPouch
       self.class.encoders.find(method(:ensure_encoder)) do |encoder_type, _|
         self.type <= encoder_type rescue false
       end.last.call(self, store, value)
+    end
+
+    def encode(value)
+      fake_store = {}
+      encode_to(fake_store, value)
+      fake_store.fetch(name)
     end
 
     private
@@ -190,6 +197,11 @@ module AttrPouch
       @host = host
       @storage_field = storage_field
       @default_pouch = default_pouch
+      @fields = {}
+    end
+
+    def field_definition(name)
+      @fields[name]
     end
 
     def field(name, type, opts={})
@@ -198,11 +210,50 @@ module AttrPouch
       end
 
       field = Field.new(name, type, opts)
+      @fields[name] = field
 
       storage_field = @storage_field
       default = @default_pouch
 
       @host.class_eval do
+        def_dataset_method(:where_pouch) do |pouch_field, expr_hash|
+          # TODO: encode the values so we can query properly
+          ds = self
+          expr_hash.each do |key, value|
+            pouch = model.pouch(pouch_field)
+            if pouch.nil?
+              raise ArgumentError,
+                    "No pouch defined for #{pouch_field}"
+            end
+            field = pouch.field_definition(key)
+            if field.nil?
+              raise ArgumentError,
+                    "No field #{key} defined for pouch #{pouch_field}"
+            end
+
+            if value.respond_to?(:each)
+              value.each_with_index do |v,i|
+                encoded_val = field.encode(v)
+                if i == 0
+                  ds = ds.where(Sequel.hstore(pouch_field)
+                                 .contains(Sequel.hstore(key => encoded_val)))
+                else
+                  ds = ds.or(Sequel.hstore(pouch_field)
+                              .contains(Sequel.hstore(key => encoded_val)))
+                end
+              end
+            elsif value.nil?
+              ds = ds.where(Sequel.hstore(pouch_field).has_key?(key.to_s) => false)
+                   .or(Sequel.hstore(pouch_field)
+                        .contains(Sequel.hstore(key => nil)))
+            else
+              ds = ds.where(Sequel.hstore(pouch_field)
+                             .contains(Sequel.hstore(key => field.encode(value))))
+            end
+          end
+          ds
+        end
+
         define_method(name) do
           store = self[storage_field]
           field.read(store)
@@ -262,20 +313,15 @@ module AttrPouch
 
   module ClassMethods
     def pouch(field, &block)
-      pouch = Pouch.new(self, field)
-      pouch.instance_eval(&block)
+      if block_given?
+        pouch = Pouch.new(self, field)
+        @pouches ||= {}
+        @pouches[field] = pouch
+        pouch.instance_eval(&block)
+      else
+        @pouches[field]
+      end
     end
-    # Add a dataset_method `where_pouch_field(pouch, expr_hash)` that
-    # behaves like `where` does for normal fields. A start is
-    #
-    #   where(Sequel.hstore_op(pouch.field).contains(expr_hash)))
-    #
-    # but this doesn't behave how one might expect with
-    #  - arrays: the array is serialized to a single hstore element
-    #     (unlike the automatic IN translation for native attributes)
-    #  - nil: the hstore column is checked for the existence of a key
-    #    pointing to a null value: the absence of a key is not considered
-    #    equivalent
   end
 end
 

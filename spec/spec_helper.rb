@@ -10,7 +10,9 @@ require 'attr_pouch'
 
 conn = Sequel.connect(ENV['DATABASE_URL'])
 conn.run 'CREATE EXTENSION IF NOT EXISTS "hstore"'
+
 conn.extension :pg_hstore
+Sequel.extension :pg_hstore_ops
 
 conn.run 'CREATE EXTENSION IF NOT EXISTS "hstore"'
 conn.run 'DROP TABLE IF EXISTS items'
