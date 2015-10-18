@@ -19,15 +19,52 @@ module AttrPouch
   class Field
     attr_reader :name, :type, :raw_type, :opts
 
+    def self.encode(type, &block)
+      @@encoders ||= {}
+      @@encoders[type] = block
+    end
+
+    def self.decode(type, &block)
+      @@decoders ||= {}
+      @@decoders[type] = block
+    end
+
+    def self.encoders; @@encoders; end
+    def self.decoders; @@decoders; end
+
+    def self.infer_type(field=nil, &block)
+      if block_given?
+        @@type_inferrer = block
+      else
+        if @@type_inferrer.nil?
+          raise InvalidFieldError, "No type inference configured"
+        else
+          type = @@type_inferrer.call(field)
+          if type.nil?
+            raise InvalidFieldError, "Could not infer type of field #{field}"
+          end
+          type
+        end
+      end
+    end
+
     def initialize(name, type, opts)
       @name = name
-      @type = to_class(type)
+      if type.nil?
+        @type = self.class.infer_type(self)
+      else
+        @type = to_class(type)
+      end
       @raw_type = type
       @opts = opts
     end
 
     def alias_as(new_name)
-      self.class.new(new_name, type, opts)
+      if new_name == name
+        self
+      else
+        self.class.new(new_name, type, opts)
+      end
     end
 
     def required?
@@ -59,7 +96,61 @@ module AttrPouch
       [ name ] + previous_aliases
     end
 
+    def write(store, value, encode: true)
+      if store.has_key?(name)
+        raise ImmutableFieldUpdateError if immutable?
+      end
+      if encode
+        self.encode_to(store, value)
+      else
+        store[name] = value
+      end
+      previous_aliases.each { |a| store.delete(a) }
+    end
+
+    def read(store, decode: true)
+      present_as = all_names.find { |n| store.has_key?(n) }
+      if store.nil? || present_as.nil?
+        if required?
+          raise MissingRequiredFieldError,
+                "Expected field #{inspect} to exist"
+        else
+          default if decode
+        end
+      elsif present_as == name
+        if decode
+          decode_from(store)
+        else
+          store.fetch(name)
+        end
+      else
+        alias_as(present_as).read(store)
+      end
+    end
+
+    def decode_from(store)
+      self.class.decoders.find(method(:ensure_decoder)) do |decoder_type, _|
+        self.type <= decoder_type rescue false
+      end.last.call(self, store)
+    end
+
+    def encode_to(store, value)
+      self.class.encoders.find(method(:ensure_encoder)) do |encoder_type, _|
+        self.type <= encoder_type rescue false
+      end.last.call(self, store, value)
+    end
+
     private
+
+    def ensure_encoder
+      raise MissingCodecError,
+            "No encoder found for #{inspect}"
+    end
+
+    def ensure_decoder
+      raise MissingCodecError,
+            "No decoder found for #{inspect}"
+    end
 
     def to_class(type)
       return type if type.is_a?(Class) || type.is_a?(Symbol)
@@ -73,51 +164,22 @@ module AttrPouch
     def initialize
       @encoders = {}
       @decoders = {}
-      @type_inferrer = nil
     end
 
-    def infer_type(field=nil, &block)
+    def infer_type(&block)
       if block_given?
-        @type_inferrer = block
-        return
-      end
-      if @type_inferrer.nil?
-        raise InvalidFieldError, "Could not infer type of field #{field.inspect}"
+        Field.infer_type(&block)
       else
-        type = @type_inferrer.call(field)
-        if type.nil?
-          raise InvalidFieldError, "Could not infer type of field #{field.inspect}"
-        end
-        type
+        raise ArgumentError, "Expected block to infer types with"
       end
     end
 
     def write(type, &block)
-      @encoders[type] = block
+      Field.encode(type, &block)
     end
 
     def read(type, &block)
-      @decoders[type] = block
-    end
-
-    def find_encoder(field)
-      encoder = @encoders.find(->{[]}) do |type, _|
-        field.type <= type rescue false
-      end.last
-      if encoder.nil?
-        raise MissingCodecError, "No encoder found for field #{field.inspect}"
-      end
-      encoder
-    end
-
-    def find_decoder(field)
-      decoder = @decoders.find(->{[]}) do |type, _|
-        field.type <= type rescue false
-      end.last 
-      if decoder.nil?
-        raise MissingCodecError, "No decoder found for field #{field.inspect}"
-      end
-      decoder
+      Field.decode(type, &block)
     end
   end
 
@@ -136,41 +198,21 @@ module AttrPouch
       end
 
       field = Field.new(name, type, opts)
-      if type.nil?
-        type = AttrPouch.config.infer_type(field)
-        field = Field.new(name, type, opts)
-      end
 
-      decoder = AttrPouch.config.find_decoder(field)
-      encoder = AttrPouch.config.find_encoder(field)
       storage_field = @storage_field
       default = @default_pouch
 
       @host.class_eval do
         define_method(name) do
           store = self[storage_field]
-          present_as = field.all_names.find { |n| store.has_key?(n) }
-          if store.nil? || present_as.nil?
-            if field.required?
-              raise MissingRequiredFieldError,
-                    "Expected field #{field.inspect} to exist"
-            else
-              field.default
-            end
-          else
-            decoder.call(field.alias_as(present_as), store)
-          end
+          field.read(store)
         end
 
         define_method("#{name.to_s.sub(/\?\z/, '')}=") do |value|
           store = self[storage_field]
           was_nil = store.nil?
           store = default if was_nil
-          if store.has_key?(field.name)
-            raise ImmutableFieldUpdateError if field.immutable?
-          end
-          encoder.call(field, store, value)
-          field.previous_aliases.each { |a| store.delete(a) }
+          field.write(store, value)
           if was_nil
             self[storage_field] = store
           else
@@ -199,27 +241,14 @@ module AttrPouch
 
           define_method(raw_name) do
             store = self[storage_field]
-            present_as = field.all_names.find { |n| store.has_key?(n) }
-            if store.nil? || present_as.nil?
-              if field.required?
-                raise MissingRequiredFieldError,
-                      "Expected field #{field.inspect} to exist"
-              end
-            else
-              store[present_as]
-            end
+            field.read(store, decode: false)
           end
 
           define_method("#{raw_name.to_s.sub(/\?\z/, '')}=") do |value|
             store = self[storage_field]
             was_nil = store.nil?
             store = default if was_nil
-            if store.has_key?(field.name)
-              raise ImmutableFieldUpdateError if field.immutable?
-            end
-            store[name] = value
-            field.previous_aliases.each { |a| store.delete(a) }
-
+            field.write(store, value, encode: false)
             if was_nil
               self[storage_field] = store
             else

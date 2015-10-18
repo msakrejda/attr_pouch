@@ -1,6 +1,5 @@
 # TODO thoughts:
   - dataset methods for querying
-  - refactor Config
   - docs
   - support for storage in JSON / plain text / arbitrary backing format
   - opt: higher precision for floats
