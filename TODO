@@ -1,8 +1,7 @@
 # TODO thoughts:
-  - semantics for encoding/decoding: where is null handling?
+  - semantics for encoding: where is null handling?
   - drop immutable
   - like sequel, avoid modified! if no changes
-  - dataset methods for querying
   - docs
   - support for storage in JSON / plain text / arbitrary backing format
   - opt: higher precision for floats
