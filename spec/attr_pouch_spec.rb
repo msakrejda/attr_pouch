@@ -36,6 +36,13 @@ describe AttrPouch do
       expect(pouchy.foo).to eq('bar')
     end
 
+    it "avoids marking the field as modified if it is not changing" do
+      pouchy.foo = 'bar'
+      expect(pouchy.save_changes).to_not be_nil
+      pouchy.foo = 'bar'
+      expect(pouchy.save_changes).to be_nil
+    end
+
     it "requires the attribute to be present if read" do
       expect { pouchy.foo }.to raise_error(AttrPouch::MissingRequiredFieldError)
     end
@@ -285,6 +292,13 @@ describe AttrPouch do
       expect do
         pouchy.raw_foo
       end.to raise_error(AttrPouch::MissingRequiredFieldError)
+    end
+
+    it "avoids marking the field as modified if it is not changing" do
+      pouchy.raw_foo = 'bar'
+      expect(pouchy.save_changes).to_not be_nil
+      pouchy.raw_foo = 'bar'
+      expect(pouchy.save_changes).to be_nil
     end
 
     it "obeys the 'immutable' option" do
