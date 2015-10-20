@@ -401,8 +401,8 @@ describe AttrPouch do
 
     before do
       AttrPouch.configure do |config|
-        config.write(:rot13) { |f,s,v| s[f.name] = rot13(v.to_s) }
-        config.read(:rot13) { |f,s| rot13(s[f.name]) }
+        config.encode(:rot13) { |f,v| rot13(v.to_s) }
+        config.decode(:rot13) { |f,v| rot13(v) }
       end
     end
 

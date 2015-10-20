@@ -101,11 +101,15 @@ module AttrPouch
         raise ImmutableFieldUpdateError if immutable?
       end
       if encode
-        self.encode_to(store, value)
-      else
-        store[name] = value
+        value = self.encode(value)
       end
-      previous_aliases.each { |a| store.delete(a) }
+      if value != store[name]
+        store[name] = value
+        previous_aliases.each { |a| store.delete(a) }
+        true
+      else
+        false
+      end
     end
 
     def read(store, decode: true)
@@ -118,33 +122,37 @@ module AttrPouch
           default if decode
         end
       elsif present_as == name
+        raw = store.fetch(name)
         if decode
-          decode_from(store)
+          decode(raw)
         else
-          store.fetch(name)
+          raw
         end
       else
         alias_as(present_as).read(store)
       end
     end
 
-    def decode_from(store)
-      # TODO: look up encoder / decoder once
-      self.class.decoders.find(method(:ensure_decoder)) do |decoder_type, _|
-        self.type <= decoder_type rescue false
-      end.last.call(self, store)
-    end
-
-    def encode_to(store, value)
-      self.class.encoders.find(method(:ensure_encoder)) do |encoder_type, _|
-        self.type <= encoder_type rescue false
-      end.last.call(self, store, value)
+    def decode(value)
+      decoder.call(self, value)
     end
 
     def encode(value)
-      fake_store = {}
-      encode_to(fake_store, value)
-      fake_store.fetch(name)
+      encoder.call(self, value)
+    end
+
+    def decoder
+      @decoder ||= self.class.decoders
+                 .find(method(:ensure_decoder)) do |decoder_type, _|
+        self.type <= decoder_type rescue false
+      end.last
+    end
+
+    def encoder
+      @encoder ||= self.class.encoders
+                 .find(method(:ensure_encoder)) do |encoder_type, _|
+        self.type <= encoder_type rescue false
+      end.last
     end
 
     private
@@ -181,11 +189,11 @@ module AttrPouch
       end
     end
 
-    def write(type, &block)
+    def encode(type, &block)
       Field.encode(type, &block)
     end
 
-    def read(type, &block)
+    def decode(type, &block)
       Field.decode(type, &block)
     end
   end
@@ -263,11 +271,11 @@ module AttrPouch
           store = self[storage_field]
           was_nil = store.nil?
           store = default if was_nil
-          field.write(store, value)
+          changed = field.write(store, value)
           if was_nil
             self[storage_field] = store
           else
-            modified! storage_field
+            modified! storage_field if changed
           end
         end
 
@@ -299,11 +307,11 @@ module AttrPouch
             store = self[storage_field]
             was_nil = store.nil?
             store = default if was_nil
-            field.write(store, value, encode: false)
+            changed = field.write(store, value, encode: false)
             if was_nil
               self[storage_field] = store
             else
-              modified! storage_field
+              modified! storage_field if changed
             end
           end
         end
@@ -326,48 +334,48 @@ module AttrPouch
 end
 
 AttrPouch.configure do |config|
-  config.write(String) do |field, store, value|
-    store[field.name] = value.to_s
+  config.encode(String) do |field, value|
+    value.to_s
   end
-  config.read(String) do |field, store|
-    store[field.name]
+  config.decode(String) do |field, value|
+    value
   end
 
-  config.write(Integer) do |field, store, value|
-    store[field.name] = value
+  config.encode(Integer) do |field, value|
+    value.to_s
   end
-  config.read(Integer) do |field, store|
-    Integer(store[field.name])
+  config.decode(Integer) do |field, value|
+    Integer(value)
   end
   
-  config.write(Float) do |field, store, value|
-    store[field.name] = value
+  config.encode(Float) do |field, value|
+    value.to_s
   end
-  config.read(Float) do |field, store|
-    Float(store[field.name])
-  end
-
-  config.write(Time) do |field, store, value|
-    store[field.name] = value.strftime('%Y-%m-%d %H:%M:%S.%N')
-  end
-  config.read(Time) do |field, store|
-    Time.parse(store[field.name])
+  config.decode(Float) do |field, value|
+    Float(value)
   end
 
-  config.write(:bool) do |field, store, value|
-    store[field.name] = value.to_s
+  config.encode(Time) do |field, value|
+    value.strftime('%Y-%m-%d %H:%M:%S.%N')
   end
-  config.read(:bool) do |field, store, value|
-    store[field.name] == 'true'
+  config.decode(Time) do |field, value|
+    Time.parse(value)
   end
 
-  config.write(Sequel::Model) do |field, store, value|
+  config.encode(:bool) do |field, value|
+    value.to_s
+  end
+  config.decode(:bool) do |field, value|
+    value == 'true'
+  end
+
+  config.encode(Sequel::Model) do |field, value|
     klass = field.type
-    store[field.name] = value[klass.primary_key]
+    value[klass.primary_key]
   end
-  config.read(Sequel::Model) do |field, store|
+  config.decode(Sequel::Model) do |field, value|
     klass = field.type
-    klass[store[field.name]]
+    klass[value]
   end
 
   config.infer_type do |field|
