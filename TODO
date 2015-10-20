@@ -1,5 +1,6 @@
 # TODO thoughts:
-  - build in run tracking, simplify read/write interface to only encode/decode
+  - simplify read/write interface to only encode/decode
+  - build in run tracking
   - semantics for encoding: where is null handling?
   - drop immutable
   - like sequel, avoid modified! if no changes
