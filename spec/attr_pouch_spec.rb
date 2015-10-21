@@ -238,8 +238,8 @@ describe AttrPouch do
     end
   end
 
-  context "with the immutable option" do
-    let(:pouchy) { make_pouchy(:foo, Integer, immutable: true) }
+  context "with the mutable option" do
+    let(:pouchy) { make_pouchy(:foo, Integer, mutable: false) }
 
     it "it allows setting the field value for the first time" do
       pouchy.update(foo: 42)
@@ -300,8 +300,8 @@ describe AttrPouch do
       expect(pouchy.save_changes).to be_nil
     end
 
-    it "obeys the 'immutable' option" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, immutable: true)
+    it "obeys the 'mutable' option" do
+      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, mutable: false)
       pouchy.update(foo: 42)
       expect do
         pouchy.update(foo: 43)

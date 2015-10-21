@@ -79,8 +79,8 @@ module AttrPouch
       opts.fetch(:default, nil)
     end
 
-    def immutable?
-      opts.fetch(:immutable, false)
+    def mutable?
+      opts.fetch(:mutable, true)
     end
 
     def deletable?
@@ -98,7 +98,7 @@ module AttrPouch
 
     def write(store, value, encode: true)
       if store.has_key?(name)
-        raise ImmutableFieldUpdateError if immutable?
+        raise ImmutableFieldUpdateError unless mutable?
       end
       if encode
         value = self.encode(value)
