@@ -2,14 +2,13 @@ require 'spec_helper'
 
 describe AttrPouch do
   def make_pouchy(field_name, field_type, opts={})
-    bepouched = Class.new(Sequel::Model(:items)) do
+    Class.new(Sequel::Model(:items)) do
       include AttrPouch
 
       pouch(:attrs) do
         field field_name, field_type, opts
       end
-    end
-    bepouched.create
+    end.create
   end
 
   context "with a string attribute" do
