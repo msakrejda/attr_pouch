@@ -1,12 +1,7 @@
 # TODO thoughts:
-  - simplify read/write interface to only encode/decode
   - build in run tracking
-  - semantics for encoding: where is null handling?
-  - drop immutable
-  - like sequel, avoid modified! if no changes
   - docs
   - support for storage in JSON / plain text / arbitrary backing format
-  - opt: higher precision for floats
   - opt: eager_default on create for fields
   - more efficient updates via merging with structure in-database field-by-field
   - encryption and/or interop with attr_vault
