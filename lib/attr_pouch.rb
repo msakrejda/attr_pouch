@@ -89,7 +89,11 @@ module AttrPouch
 
     def previous_aliases
       was = opts.fetch(:was, [])
-      was.is_a?(Array) ? was : [ was ]
+      if was.respond_to?(:to_a)
+        was.to_a
+      else
+        [ was ]
+      end
     end
 
     def all_names
