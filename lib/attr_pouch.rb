@@ -148,18 +148,28 @@ module AttrPouch
     def decoder
       @decoder ||= self.class.decoders
                  .find(method(:ensure_decoder)) do |decoder_type, _|
-        self.type <= decoder_type rescue false
+        compatible_codec?(decoder_type)
       end.last
     end
 
     def encoder
       @encoder ||= self.class.encoders
                  .find(method(:ensure_encoder)) do |encoder_type, _|
-        self.type <= encoder_type rescue false
+        compatible_codec?(encoder_type)
       end.last
     end
 
     private
+
+    def compatible_codec?(codec_type)
+      if self.type.is_a?(Class) && codec_type.is_a?(Class)
+        self.type <= codec_type
+      else
+        self.type == codec_type
+      end
+    rescue
+      false
+    end
 
     def ensure_encoder
       raise MissingCodecError,
