@@ -11,7 +11,7 @@ describe AttrPouch do
     end.create
   end
 
-  context "with a string attribute" do
+  context "with a simple attribute" do
     let(:pouchy) { make_pouchy(:foo, String) }
 
     it "generates getter and setter" do
@@ -44,6 +44,35 @@ describe AttrPouch do
 
     it "requires the attribute to be present if read" do
       expect { pouchy.foo }.to raise_error(AttrPouch::MissingRequiredFieldError)
+    end
+
+    context "with nil values" do
+      let(:pouchy) { make_pouchy(:f1, :nil_hater) }
+
+      before do
+        AttrPouch.configure do |config|
+          config.encode(:nil_hater) { |f,v| v.nil? ? (raise ArgumentError) : v }
+          config.decode(:nil_hater) { |f,v| v.nil? ? (raise ArgumentError) : v }
+        end
+      end
+
+      it "bypasses encoding" do
+        pouchy.update(f1: 'foo')
+        expect { pouchy.update(f1: nil) }.not_to raise_error
+        expect(pouchy.f1).to be_nil
+      end
+
+      it "bypasses decoding" do
+        pouchy.update(attrs: Sequel.hstore(f1: nil))
+        expect { pouchy.f1 }.not_to raise_error
+        expect(pouchy.f1).to be_nil
+      end
+
+      it "still records the value as nil if not present when writing" do
+        pouchy.update(f1: nil)
+        expect(pouchy.attrs).to have_key(:f1)
+        expect(pouchy.attrs[:f1]).to be_nil
+      end
     end
   end
 

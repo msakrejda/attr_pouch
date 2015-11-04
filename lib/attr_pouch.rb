@@ -107,7 +107,7 @@ module AttrPouch
       if encode
         value = self.encode(value)
       end
-      if value != store[name]
+      if !store.has_key?(name) || value != store[name]
         store[name] = value
         previous_aliases.each { |a| store.delete(a) }
         true
@@ -138,11 +138,11 @@ module AttrPouch
     end
 
     def decode(value)
-      decoder.call(self, value)
+      decoder.call(self, value) unless value.nil?
     end
 
     def encode(value)
-      encoder.call(self, value)
+      encoder.call(self, value) unless value.nil?
     end
 
     def decoder
