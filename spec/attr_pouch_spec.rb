@@ -1,18 +1,18 @@
 require 'spec_helper'
 
 describe AttrPouch do
-  def make_pouchy(field_name, field_type, opts={})
+  def make_pouchy(field_name, opts={})
     Class.new(Sequel::Model(:items)) do
       include AttrPouch
 
       pouch(:attrs) do
-        field field_name, field_type, opts
+        field field_name, opts
       end
     end.create
   end
 
   context "with a simple attribute" do
-    let(:pouchy) { make_pouchy(:foo, String) }
+    let(:pouchy) { make_pouchy(:foo, type: String) }
 
     it "generates getter and setter" do
       pouchy.foo = 'bar'
@@ -47,7 +47,7 @@ describe AttrPouch do
     end
 
     context "with nil values" do
-      let(:pouchy) { make_pouchy(:f1, :nil_hater) }
+      let(:pouchy) { make_pouchy(:f1, type: :nil_hater) }
 
       before do
         AttrPouch.configure do |config|
@@ -77,7 +77,7 @@ describe AttrPouch do
   end
 
   context "with an integer attribute" do
-    let(:pouchy) { make_pouchy(:foo, Integer) }
+    let(:pouchy) { make_pouchy(:foo, type: Integer) }
 
     it "preserves the type" do
       pouchy.update(foo: 42)
@@ -87,7 +87,7 @@ describe AttrPouch do
   end
 
   context "with a float attribute" do
-    let(:pouchy) { make_pouchy(:foo, Float) }
+    let(:pouchy) { make_pouchy(:foo, type: Float) }
 
     it "preserves the type" do
       pouchy.update(foo: 2.78)
@@ -97,7 +97,7 @@ describe AttrPouch do
   end
 
   context "with a boolean attribute" do
-    let(:pouchy) { make_pouchy(:foo, :bool) }
+    let(:pouchy) { make_pouchy(:foo, type: :bool) }
 
     it "preserves the type" do
       pouchy.update(foo: true)
@@ -107,7 +107,7 @@ describe AttrPouch do
   end
 
   context "with a Time attribute" do
-    let(:pouchy) { make_pouchy(:foo, Time) }
+    let(:pouchy) { make_pouchy(:foo, type: Time) }
 
     it "preserves the type" do
       now = Time.now
@@ -119,7 +119,7 @@ describe AttrPouch do
 
   context "with a Sequel::Model attribute" do
     let(:model_class) { Class.new(Sequel::Model(:items)) }
-    let(:pouchy)      { make_pouchy(:foo, model_class) }
+    let(:pouchy)      { make_pouchy(:foo, type: model_class) }
 
     it "preserves the type" do
       new_model = model_class.create
@@ -132,7 +132,7 @@ describe AttrPouch do
 
   context "with a Sequel::Model attribute provided as a String" do
     let(:model_class) { module A; class B < Sequel::Model(:items); end; end; A::B }
-    let(:pouchy)      { make_pouchy(:foo, model_class.name) }
+    let(:pouchy)      { make_pouchy(:foo, type: model_class.name) }
 
     it "preserves the type" do
       new_model = model_class.create
@@ -146,13 +146,13 @@ describe AttrPouch do
   context "with an attribute that is not a simple method name" do
     it "raises an error when defining the class" do
       expect do
-        make_pouchy(:"nope, not valid", String)
+        make_pouchy(:"nope, not valid", type: String)
       end.to raise_error(AttrPouch::InvalidFieldError)
     end
   end
 
   context "with an attribute name that ends in a question mark" do
-    let(:pouchy) { make_pouchy(:foo?, :bool) }
+    let(:pouchy) { make_pouchy(:foo?, type: :bool) }
 
     it "generates normal getter" do
       pouchy.attrs = Sequel.hstore(foo?: true)
@@ -171,9 +171,9 @@ describe AttrPouch do
         include AttrPouch
 
         pouch(:attrs) do
-          field :f1, String
-          field :f2, :bool
-          field :f3, Integer
+          field :f1, type: String
+          field :f2, type: :bool
+          field :f3, type: Integer
         end
       end
     end
@@ -199,7 +199,7 @@ describe AttrPouch do
   end
 
   context "with the default option" do
-    let(:pouchy) { make_pouchy(:foo, String, default: 'hello') }
+    let(:pouchy) { make_pouchy(:foo, type: String, default: 'hello') }
 
     it "returns the default if the key is absent" do
       expect(pouchy.foo).to eq('hello')
@@ -211,7 +211,9 @@ describe AttrPouch do
     end
 
     context "with the deletable option" do
-      let(:pouchy) { make_pouchy(:foo, String, default: 'hello', deletable: true) }
+      let(:pouchy) { make_pouchy(:foo, type: String,
+                                 default: 'hello',
+                                 deletable: true) }
 
       it "it returns the default if the key is absent" do
         expect(pouchy.foo).to eq('hello')
@@ -227,7 +229,7 @@ describe AttrPouch do
   end
 
   context "with the deletable option" do
-    let(:pouchy) { make_pouchy(:foo, Integer, deletable: true) }
+    let(:pouchy) { make_pouchy(:foo, type: Integer, deletable: true) }
 
     it "is nil if the field is absent" do
       expect(pouchy.foo).to be_nil
@@ -258,7 +260,7 @@ describe AttrPouch do
     end
 
     it "also deletes aliases from the was option" do
-      pouchy = make_pouchy(:foo, Integer, deletable: true, was: :bar)
+      pouchy = make_pouchy(:foo, type: Integer, deletable: true, was: :bar)
 
       pouchy.update(attrs: Sequel.hstore(bar: 42))
       expect(pouchy.foo).to eq(42)
@@ -268,7 +270,7 @@ describe AttrPouch do
   end
 
   context "with the mutable option" do
-    let(:pouchy) { make_pouchy(:foo, Integer, mutable: false) }
+    let(:pouchy) { make_pouchy(:foo, type: Integer, mutable: false) }
 
     it "it allows setting the field value for the first time" do
       pouchy.update(foo: 42)
@@ -283,7 +285,7 @@ describe AttrPouch do
   end
 
   context "with the was option" do
-    let(:pouchy) { make_pouchy(:foo, String, was: %w(bar baz)) }
+    let(:pouchy) { make_pouchy(:foo, type: String, was: %w(bar baz)) }
 
     it "supports aliases for renaming fields" do
       pouchy.update(attrs: Sequel.hstore(bar: 'hello'))
@@ -302,14 +304,14 @@ describe AttrPouch do
     end
 
     it "supports a shorthand for the single-alias case" do
-      pouchy = make_pouchy(:foo, String, was: :bar)
+      pouchy = make_pouchy(:foo, type: String, was: :bar)
       pouchy.update(attrs: Sequel.hstore(bar: 'hello'))
       expect(pouchy.foo).to eq('hello')
     end
   end
 
   context "with the raw_field option" do
-    let(:pouchy) { make_pouchy(:foo, Float, raw_field: :raw_foo) }
+    let(:pouchy) { make_pouchy(:foo, type: Float, raw_field: :raw_foo) }
 
     it "supports direct access to the encoded value" do
       pouchy.update(foo: 2.78)
@@ -330,7 +332,7 @@ describe AttrPouch do
     end
 
     it "obeys the 'mutable' option" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, mutable: false)
+      pouchy = make_pouchy(:foo, type: Float, raw_field: :raw_foo, mutable: false)
       pouchy.update(foo: 42)
       expect do
         pouchy.update(foo: 43)
@@ -338,18 +340,18 @@ describe AttrPouch do
     end
 
     it "is nil when the 'default' option is present" do
-      pouchy = make_pouchy(:foo, Float, raw_field: :raw_foo, default: 7.2)
+      pouchy = make_pouchy(:foo, type: Float, raw_field: :raw_foo, default: 7.2)
       expect(pouchy.raw_foo).to be_nil
     end
 
     it "obeys the 'was' option when reading" do
-      pouchy = make_pouchy(:foo, String, raw_field: :raw_foo, was: :bar)
+      pouchy = make_pouchy(:foo, type: String, raw_field: :raw_foo, was: :bar)
       pouchy.attrs = Sequel.hstore(bar: 'hello')
       expect(pouchy.raw_foo).to eq('hello')
     end
 
     it "obeys the 'was' option when writing" do
-      pouchy = make_pouchy(:foo, String, raw_field: :raw_foo, was: :bar)
+      pouchy = make_pouchy(:foo, type: String, raw_field: :raw_foo, was: :bar)
       pouchy.attrs = Sequel.hstore(bar: 'hello')
       pouchy.update(raw_foo: 'goodbye')
       expect(pouchy.attrs).not_to have_key(:bar)
@@ -358,45 +360,45 @@ describe AttrPouch do
 
   context "inferring field types" do
     it "infers field named num_foo to be of type Integer" do
-      pouchy = make_pouchy(:num_foo, nil)
+      pouchy = make_pouchy(:num_foo)
       pouchy.update(num_foo: 42)
       expect(pouchy.num_foo).to eq(42)
     end
 
     it "infers field named foo_count to be of type Integer" do
-      pouchy = make_pouchy(:foo_count, nil)
+      pouchy = make_pouchy(:foo_count)
       pouchy.update(foo_count: 42)
       expect(pouchy.foo_count).to eq(42)
     end
 
     it "infers field named foo_size to be of type Integer" do
-      pouchy = make_pouchy(:foo_size, nil)
+      pouchy = make_pouchy(:foo_size)
       pouchy.update(foo_size: 42)
       expect(pouchy.foo_size).to eq(42)
     end
 
     it "infers field named foo? to be of type :bool" do
-      pouchy = make_pouchy(:foo?, nil)
+      pouchy = make_pouchy(:foo?)
       pouchy.update(foo: true)
       expect(pouchy.foo?).to be true
     end
 
     it "infers field named foo_at to be of type Time" do
       now = Time.now
-      pouchy = make_pouchy(:foo_at, nil)
+      pouchy = make_pouchy(:foo_at)
       pouchy.update(foo_at: now)
       expect(pouchy.foo_at).to eq(now)
     end
 
     it "infers field named foo_by to be of type Time" do
       now = Time.now
-      pouchy = make_pouchy(:foo_by, nil)
+      pouchy = make_pouchy(:foo_by)
       pouchy.update(foo_by: now)
       expect(pouchy.foo_by).to eq(now)
     end
 
     it "infers field named foo to be of type String" do
-      pouchy = make_pouchy(:foo, nil)
+      pouchy = make_pouchy(:foo)
       pouchy.update(foo: 'hello')
       expect(pouchy.foo).to eq('hello')
     end
@@ -408,10 +410,10 @@ describe AttrPouch do
         include AttrPouch
 
         pouch(:attrs) do
-           field :f1, String
-           field :f2, String
-           field :f3, String
-           field :f4, :rot13
+           field :f1, type: String
+           field :f2, type: String
+           field :f3, type: String
+           field :f4, type: :rot13
          end
       end
     end

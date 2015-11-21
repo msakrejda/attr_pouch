@@ -48,12 +48,12 @@ module AttrPouch
       end
     end
 
-    def initialize(name, type, opts)
+    def initialize(name, opts)
       @name = name
-      if type.nil?
-        @type = self.class.infer_type(self)
+      if opts.has_key?(:type)
+        @type = to_class(opts.fetch(:type))
       else
-        @type = to_class(type)
+        @type = self.class.infer_type(self)
       end
       @raw_type = type
       @opts = opts
@@ -63,7 +63,7 @@ module AttrPouch
       if new_name == name
         self
       else
-        self.class.new(new_name, type, opts)
+        self.class.new(new_name, opts)
       end
     end
 
@@ -226,12 +226,12 @@ module AttrPouch
       @fields[name]
     end
 
-    def field(name, type, opts={})
+    def field(name, opts={})
       unless VALID_FIELD_NAME_REGEXP.match(name)
         raise InvalidFieldError, "Field name must match #{VALID_FIELD_NAME_REGEXP}"
       end
 
-      field = Field.new(name, type, opts)
+      field = Field.new(name, opts)
       @fields[name] = field
 
       storage_field = @storage_field
