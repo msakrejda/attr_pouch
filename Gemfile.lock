@@ -21,9 +21,6 @@ GEM
       rspec-support (~> 3.1.0)
     rspec-support (3.1.2)
     sequel (4.13.0)
-    sequel_pg (1.6.13)
-      pg (>= 0.8.0)
-      sequel (>= 3.39.0)
 
 PLATFORMS
   ruby
@@ -33,4 +30,6 @@ DEPENDENCIES
   pg (~> 0.18.3)
   rspec (~> 3.0)
   sequel (~> 4.13)
-  sequel_pg
+
+BUNDLED WITH
+   1.10.6
