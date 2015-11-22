@@ -12,7 +12,7 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.name          = "attr_pouch"
   gem.require_paths = ["lib"]
-  gem.version       = AttrBag::VERSION
+  gem.version       = AttrPouch::VERSION
   gem.license       = "MIT"
 
   gem.add_development_dependency "rspec", '~> 3.0'
