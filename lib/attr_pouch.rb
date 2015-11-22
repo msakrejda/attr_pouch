@@ -17,7 +17,7 @@ module AttrPouch
   end
 
   class Field
-    attr_reader :name, :type, :raw_type, :opts
+    attr_reader :pouch, :name, :type, :raw_type, :opts
 
     def self.encode(type, &block)
       @@encoders ||= {}
@@ -48,22 +48,26 @@ module AttrPouch
       end
     end
 
-    def initialize(name, opts)
+    def initialize(pouch, name, opts)
       @name = name
       if opts.has_key?(:type)
         @type = to_class(opts.fetch(:type))
       else
         @type = self.class.infer_type(self)
       end
-      @raw_type = type
+      @pouch = pouch
       @opts = opts
+    end
+
+    def raw_type
+      @opts.fetch(:type, nil)
     end
 
     def alias_as(new_name)
       if new_name == name
         self
       else
-        self.class.new(new_name, opts)
+        self.class.new(pouch, new_name, opts)
       end
     end
 
@@ -215,10 +219,9 @@ module AttrPouch
   class Pouch
     VALID_FIELD_NAME_REGEXP = %r{\A[a-zA-Z0-9_]+\??\z}
 
-    def initialize(host, storage_field, default_pouch: Sequel.hstore({}))
+    def initialize(host, storage_field)
       @host = host
       @storage_field = storage_field
-      @default_pouch = default_pouch
       @fields = {}
     end
 
@@ -226,16 +229,46 @@ module AttrPouch
       @fields[name]
     end
 
+    def hstore?
+      pouch_column_info.fetch(:db_type) == 'hstore'
+    end
+
+    def json?
+      pouch_column_info.fetch(:db_type) == 'json'
+    end
+
+    def jsonb?
+      pouch_column_info.fetch(:db_type) == 'jsonb'
+    end
+
+    def either_json?
+      json? || jsonb?
+    end
+
+    def pouch_column_info
+      @host.db_schema.find { |k,_| k == @storage_field }.last
+    end
+
+    def default_pouch
+      if hstore?
+        Sequel.hstore({})
+      elsif either_json?
+        Sequel.pg_json({})
+      else
+        raise InvalidPouchError, "Pouch must use hstore, json, or jsonb column"
+      end
+    end
+
     def field(name, opts={})
       unless VALID_FIELD_NAME_REGEXP.match(name)
         raise InvalidFieldError, "Field name must match #{VALID_FIELD_NAME_REGEXP}"
       end
 
-      field = Field.new(name, opts)
+      field = Field.new(self, name, opts)
       @fields[name] = field
 
       storage_field = @storage_field
-      default = @default_pouch
+      default = default_pouch
 
       @host.class_eval do
         def_dataset_method(:where_pouch) do |pouch_field, expr_hash|
