@@ -217,7 +217,7 @@ end
 
 nils = User[name: 'nils'] # in db we have `{ ssl?: true, byzantion?: true }`
 nils.tls?                 # true
-nils.consantinople?       # true
+nils.constantinople?      # true
 ```
 
 Note that no direct accessors are defined for the old names, and if

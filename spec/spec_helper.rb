@@ -12,14 +12,19 @@ conn = Sequel.connect(ENV['DATABASE_URL'])
 conn.run 'CREATE EXTENSION IF NOT EXISTS "hstore"'
 
 conn.extension :pg_hstore
+conn.extension :pg_json
+
 Sequel.extension :pg_hstore_ops
+Sequel.extension :pg_json_ops
 
 conn.run 'CREATE EXTENSION IF NOT EXISTS "hstore"'
 conn.run 'DROP TABLE IF EXISTS items'
 conn.run <<-EOF
 CREATE TABLE items(
   id serial primary key,
-  attrs hstore default ''
+  attrs_hstore hstore default '',
+  attrs_json json default '{}',
+  attrs_jsonb jsonb default '{}'
 )
 EOF
 

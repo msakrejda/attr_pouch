@@ -6,4 +6,5 @@ module AttrPouch
   class InvalidPouchError < Error; end
   class MissingRequiredFieldError < Error; end
   class ImmutableFieldUpdateError < Error; end
+  class UnsupportedError < Error; end
 end

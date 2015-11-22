@@ -49,7 +49,7 @@ module AttrPouch
     end
 
     def initialize(pouch, name, opts)
-      @name = name
+      @name = name.to_s
       if opts.has_key?(:type)
         @type = to_class(opts.fetch(:type))
       else
@@ -93,11 +93,12 @@ module AttrPouch
 
     def previous_aliases
       was = opts.fetch(:was, [])
-      if was.respond_to?(:to_a)
-        was.to_a
-      else
-        [ was ]
-      end
+      aliases = if was.respond_to?(:to_a)
+                  was.to_a
+                else
+                  [ was ]
+                end
+      aliases.map(&:to_s)
     end
 
     def all_names
@@ -131,11 +132,7 @@ module AttrPouch
         end
       elsif present_as == name
         raw = store.fetch(name)
-        if decode
-          decode(raw)
-        else
-          raw
-        end
+        decode ? decode(raw) : raw
       else
         alias_as(present_as).read(store)
       end
@@ -221,12 +218,12 @@ module AttrPouch
 
     def initialize(host, storage_field)
       @host = host
-      @storage_field = storage_field
+      @storage_field = storage_field.to_sym
       @fields = {}
     end
 
     def field_definition(name)
-      @fields[name]
+      @fields[name.to_s]
     end
 
     def hstore?
@@ -249,14 +246,32 @@ module AttrPouch
       @host.db_schema.find { |k,_| k == @storage_field }.last
     end
 
-    def default_pouch
+    def wrap(hash)
       if hstore?
-        Sequel.hstore({})
-      elsif either_json?
-        Sequel.pg_json({})
+        Sequel.hstore(hash)
+      elsif json?
+        Sequel.pg_json(hash)
+      elsif jsonb?
+        Sequel.pg_jsonb(hash)
       else
         raise InvalidPouchError, "Pouch must use hstore, json, or jsonb column"
       end
+    end
+
+    def store
+      if hstore?
+        Sequel.hstore(@storage_field)
+      elsif json?
+        Sequel.pg_json_op(@storage_field)
+      elsif jsonb?
+        Sequel.pg_jsonb_op(@storage_field)
+      else
+        raise InvalidPouchError, "Pouch must use hstore, json, or jsonb column"
+      end
+    end
+
+    def default_pouch
+      wrap({})
     end
 
     def field(name, opts={})
@@ -265,21 +280,27 @@ module AttrPouch
       end
 
       field = Field.new(self, name, opts)
-      @fields[name] = field
+      @fields[name.to_s] = field
 
       storage_field = @storage_field
       default = default_pouch
 
       @host.class_eval do
+        # TODO: move this; it is self contained and not specific to
+        # any given field or pouch, so it should not be here
         def_dataset_method(:where_pouch) do |pouch_field, expr_hash|
-          # TODO: encode the values so we can query properly
           ds = self
+          pouch = model.pouch(pouch_field)
+          if pouch.nil?
+            raise ArgumentError,
+                  "No pouch defined for #{pouch_field}"
+          end
+          if pouch.json?
+            raise UnsupportedError, "Dataset queries not supported for columns of type json"
+          end
+
           expr_hash.each do |key, value|
-            pouch = model.pouch(pouch_field)
-            if pouch.nil?
-              raise ArgumentError,
-                    "No pouch defined for #{pouch_field}"
-            end
+            key = key.to_s
             field = pouch.field_definition(key)
             if field.nil?
               raise ArgumentError,
@@ -288,22 +309,15 @@ module AttrPouch
 
             if value.respond_to?(:each)
               value.each_with_index do |v,i|
-                encoded_val = field.encode(v)
-                if i == 0
-                  ds = ds.where(Sequel.hstore(pouch_field)
-                                 .contains(Sequel.hstore(key => encoded_val)))
-                else
-                  ds = ds.or(Sequel.hstore(pouch_field)
-                              .contains(Sequel.hstore(key => encoded_val)))
-                end
+                condition = pouch.store.contains(pouch.wrap(key => field.encode(v)))
+                ds = i == 0 ? ds.where(condition) : ds.or(condition)
               end
             elsif value.nil?
-              ds = ds.where(Sequel.hstore(pouch_field).has_key?(key.to_s) => false)
-                   .or(Sequel.hstore(pouch_field)
-                        .contains(Sequel.hstore(key => nil)))
+              ds = ds.where(pouch.store.has_key?(key) => false)
+                   .or(pouch.store.contains(pouch.wrap(key => field.encode(value))))
             else
-              ds = ds.where(Sequel.hstore(pouch_field)
-                             .contains(Sequel.hstore(key => field.encode(value))))
+              ds = ds.where(pouch.store
+                             .contains(pouch.wrap(key => field.encode(value))))
             end
           end
           ds
@@ -413,7 +427,7 @@ AttrPouch.configure do |config|
     value.to_s
   end
   config.decode(:bool) do |field, value|
-    value == 'true'
+    value.to_s == 'true'
   end
 
   config.encode(Sequel::Model) do |field, value|
