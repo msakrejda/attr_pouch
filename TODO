@@ -1,6 +1,9 @@
 # TODO thoughts:
+  - support for storage in json / jsonb
+    - run tests against all three formats in turn?
   - docs
-  - support for storage in JSON / plain text / arbitrary backing format
+    - dataset
+    - update to note json / jsonb support
   - opt: eager_default on create for fields
   - opt: run tracking
   - more efficient updates via merging with structure in-database field-by-field
