@@ -1,7 +1,4 @@
 # TODO thoughts:
-  - support for storage in json / jsonb
-    - run tests against all three formats in turn?
-    - dataset method
   - docs
     - dataset
     - update to note json / jsonb support
