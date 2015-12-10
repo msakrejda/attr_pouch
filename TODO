@@ -2,6 +2,7 @@
   - docs
     - dataset
     - update to note json / jsonb support
+  - support for access via [] and []= methods
   - opt: eager_default on create for fields
   - opt: run tracking
   - more efficient updates via merging with structure in-database field-by-field
