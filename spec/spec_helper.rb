@@ -25,7 +25,9 @@ CREATE TABLE items(
   attrs_hstore hstore default '',
   attrs_json json default '{}',
   attrs_jsonb jsonb default '{}'
-)
+);
+CREATE INDEX items_hstore_idx ON items USING gin (attrs_hstore);
+CREATE INDEX items_jsonb_idx ON items USING gin (attrs_jsonb);
 EOF
 
 RSpec.configure do |config|

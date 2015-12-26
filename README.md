@@ -26,11 +26,12 @@ model.
 
 ### Usage
 
-AttrPouch allows you to designate a "pouch" database `hstore` field
-that provides schema-less storage for any `Sequel::Model`
-object. Within this pouch, you define additional fields that behave
-largely like standard Sequel fields (i.e., as if they were backed by
-their own database columns), but are all in fact stored in the pouch:
+AttrPouch allows you to designate a "pouch" database field (of type
+`jsonb`, `hstore`, or `json`) that provides schema-less storage for
+any `Sequel::Model` object. Within this pouch, you can define
+sub-fields that behave largely like standard Sequel fields (i.e., as
+if they were backed by their own database columns), but are all in
+fact stored in the pouch:
 
 ```ruby
 class User < Sequel::Model
@@ -107,10 +108,10 @@ AttrPouch.configure do |config|
 end
 ```
 
-Note that your encoder and decoder do have access to the field object,
-which includes name, type, and any options you've configured in the
-field definition. Option names are not checked by `attr_vault`, so
-custom decoder or encoder options are possible.
+Note that your encoder and decoder do have access to the field
+definition object, which includes name, type, and any options you've
+configured in the field definition. Option names are not checked by
+`attr_vault`, so custom decoder or encoder options are possible.
 
 When an encoder or decoder is specified via symbol, it will only work
 for fields whose type is declared to be exactly that symbol. When
@@ -123,7 +124,7 @@ This can be illustrated via the last built-in codec, for
 ```ruby
 class User < Sequel::Model
   pouch(:preferences) do
-    field :bff, User
+    field :bff, type: User
   end
 end
 
@@ -145,7 +146,7 @@ infers types as follows:
  * `:bool`: name ends with `?`
  * `String`: anything else
 
-If this is not suitable, you can register your own type inference
+If this is not suitable, you can register your own "type inference"
 mechanism instead:
 
 ```ruby
@@ -171,7 +172,11 @@ end
 
 karen = User.create(name: 'karen')
 karen.update(proxy_address: '10.11.12.13:8001')
-karen.delete_proxy_address
+karen.delete_proxy_address # note this does not save the object
+karen.reload
+karen.proxy_address # still '10.11.12.13:8001'; we never saved
+karen.delete_proxy_address! # or call #save or #save_changes after a delete
+karen.proxy_address # now it's gone
 ```
 
 Deletable fields are automatically given a default of `nil` if no
@@ -225,9 +230,10 @@ the value is updated, it is written under the new name and any old
 values in the pouch are deleted:
 
 ```ruby
+nils.istanbul = false
 nils.tls?         # true
-nils.instanbul?   # true
-nils.save_changes # now in db as `{ tls?: true, instanbul?: true }`
+nils.instanbul?   # false
+nils.save_changes # now in db as `{ tls?: true, instanbul?: false }`
 ```
 
 #### Raw value access
@@ -244,8 +250,9 @@ absent field value deferring to the default:
 ```ruby
 class User < Sequel::Model
   pouch(:preferences) do
-    field :bff, User, raw_field: :bff_id
-    field :arch_nemesis, raw_field: :nemesis_id, default: User[name: 'donald']
+    field :bff, type: User, raw_field: :bff_id
+    field :arch_nemesis, type: User, raw_field: :nemesis_id,
+	        default: User[name: 'donald']
   end
 end
 
@@ -261,18 +268,70 @@ raw field value is updated, values present under any of the `was` keys
 will be deleted.
 
 
+### Dataset querying
+
+AttrPouch provides a dataset method to simplify querying pouch
+contents. The interface is similar to querying first-class columns:
+
+```ruby
+class User < Sequel::Model
+  pouch(:preferences) do
+    field :bff, type: User
+    field :favorite_color
+  end
+end
+
+# match on multiple fields
+User.where_pouch(bff: User[name: 'georgia'], favorite_color: 'goldenrod').all
+# match on multiple values
+User.where_pouch(favorite_color: [ 'gray', 'dark gray', 'black' ]).all
+# check for nil value (or absence of key)
+User.where_pouch(bff: nil).all
+```
+
+Note that you can speed up your queries considerably by adding an
+index. AttrPouch uses containment queries to implement dataset
+querying, so you can use GIN indexes with both
+[`hstore`](https://www.postgresql.org/docs/current/static/hstore.html#AEN160038)
+and
+[`jsonb`](https://www.postgresql.org/docs/current/static/datatype-json.html#JSON-INDEXING):
+
+```ruby
+Sequel.migration do
+  up do
+    execute <<-EOF
+CREATE INDEX users_prefs_idx ON users USING gin (preferences);
+EOF
+  end
+  down do
+    execute <<-EOF
+DROP INDEX users_prefs_idx;
+EOF
+  end
+EOF
+end
+```
+
+N.B.: For simplicity, AttrPouch treats the absence of a key and the
+presence of a key with a `NULL` value the same when querying, which
+means queries looking for `nil` values do not use the indexes.
+
+Dataset queries are not supported for fields backed by columns of
+type `json`.
+
 ### Schema
 
 AttrPouch requires a new storage field for each pouch added to a
-model. It is currently designed for and tested with `hstore`. Consider
-using a single pouch per model class unless you clearly need several
-distinct pouches.
+model. It is currently designed for and tested with `jsonb`, `hstore`,
+and `json` (although `json`-format fields do not currently support
+dataset querying, as per above). Consider using a single pouch per
+model class unless you clearly need several distinct pouches.
 
 ```ruby
 Sequel.migration do
   change do
     alter_table(:users) do
-      add_column :preferences, :hstore
+      add_column :preferences, :jsonb
     end
   end
 end
@@ -290,8 +349,8 @@ $ createdb attr_pouch_test
 $ DATABASE_URL=postgres:///attr_pouch_test bundle exec rspec
 ```
 
-Please follow the project's general coding style and open issues for
-any significant behavior or API changes.
+Please follow the project's general coding style and open issues
+beforehand to discuss any significant behavior or API changes.
 
 A pull request is understood to mean you are offering your code to the
 project under the MIT License.

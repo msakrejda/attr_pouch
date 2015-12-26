@@ -503,7 +503,7 @@ describe AttrPouch do
           end
 
           it "finds the right item with a nil field value" do
-            p1 = bepouched.create(column_name =>  wrap_hash(f1: nil))
+            p1 = bepouched.create(column_name => wrap_hash(f1: nil))
             matching = bepouched.where_pouch(column_name, f1: nil).all
             expect(matching.count).to eq(1)
             expect(matching.first.id).to eq(p1.id)
@@ -516,6 +516,33 @@ describe AttrPouch do
             matching = bepouched.where_pouch(column_name, f4: 'hello')
             expect(matching.count).to eq(1)
             expect(matching.first.id).to eq(p1.id)
+          end
+
+          context "using indexes" do
+            before do
+              bepouched.create(column_name => wrap_hash(f1: nil))
+            end
+
+            def plan_when_looking_for(values)
+              stmt = bepouched.where_pouch(column_name, f1: values).sql
+              db = bepouched.db
+              db.transaction do
+                db.run("SET LOCAL enable_seqscan = false")
+                db.fetch("EXPLAIN #{stmt}").all
+              end.map { |line| line.fetch(:"QUERY PLAN") }.join("\n")
+            end
+
+            it "uses index when looking for a single value" do
+              expect(plan_when_looking_for('hello')).to match(/index/i)
+            end
+
+            it "uses index when looking for multiple values" do
+              expect(plan_when_looking_for(%(hello world))).to match(/index/i)
+            end
+
+            xit "uses index when looking for a nil value" do
+              expect(plan_when_looking_for(nil)).to match(/index/i)
+            end
           end
         end
       end
