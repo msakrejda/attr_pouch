@@ -1,4 +1,6 @@
 # TODO thoughts:
+  - chainable encode/decode filters
+  - support for inheritance (pouch with some fields in parent class, some in child)
   - support for access via [] and []= methods
   - opt: eager_default on create for fields
   - opt: run tracking
