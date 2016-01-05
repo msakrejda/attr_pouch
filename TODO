@@ -1,7 +1,4 @@
 # TODO thoughts:
-  - docs
-    - dataset
-    - update to note json / jsonb support
   - support for access via [] and []= methods
   - opt: eager_default on create for fields
   - opt: run tracking
