@@ -77,7 +77,7 @@ class User < Sequel::Model
   include AttrPouch
 
   pouch(:preferences) do
-	field :favorite_color, default: 'puce'
+    field :favorite_color, default: 'puce'
   end
 end
 
@@ -114,10 +114,10 @@ You can override these built-ins or register entirely new types:
 
 ```ruby
 AttrPouch.configure do |config|
-  config.write(:obfuscated_string) do |field, value|
+  config.encode(:obfuscated_string) do |field, value|
     value.reverse
   end
-  config.read(:obfuscated_string) do |field, value|
+  config.decode(:obfuscated_string) do |field, value|
     value.reverse
   end
 end
@@ -277,7 +277,7 @@ class User < Sequel::Model
   pouch(:preferences) do
     field :bff, type: User, raw_field: :bff_id
     field :arch_nemesis, type: User, raw_field: :nemesis_id,
-	        default: User[name: 'donald']
+          default: User[name: 'donald']
   end
 end
 
