@@ -23,6 +23,15 @@ parts of your data model, but augment it with schema-less storage for
 the parts that are in flux or just awkward to fit into the relational
 model.
 
+### Installation
+
+Add `attr_pouch` to your `Gemfile`:
+
+```ruby
+gem 'attr_pouch'
+```
+
+Then run `bundle install`.
 
 ### Usage
 
@@ -35,6 +44,8 @@ fact stored in the pouch:
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :theme
     field :autoplay_videos?
@@ -63,6 +74,8 @@ can be marked as optional by providing a default:
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
 	field :favorite_color, default: 'puce'
   end
@@ -87,6 +100,8 @@ simple built-in types are `String`, `Integer`, `Float`, `Time`, and
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :favorite_color, type: String
     field :lucky_number, type: Integer
@@ -123,6 +138,8 @@ This can be illustrated via the last built-in codec, for
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :bff, type: User
   end
@@ -165,6 +182,8 @@ methods for them:
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :proxy_address, deletable: true
   end
@@ -197,6 +216,8 @@ updates once an initial value has been set:
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :lucky?, mutable: false
   end
@@ -214,6 +235,8 @@ previous names under the `was` option.
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :tls?, was: :ssl?
     field :instabul?, was: %i[constantinople? byzantion?]
@@ -249,6 +272,8 @@ absent field value deferring to the default:
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :bff, type: User, raw_field: :bff_id
     field :arch_nemesis, type: User, raw_field: :nemesis_id,
@@ -275,6 +300,8 @@ contents. The interface is similar to querying first-class columns:
 
 ```ruby
 class User < Sequel::Model
+  include AttrPouch
+
   pouch(:preferences) do
     field :bff, type: User
     field :favorite_color
