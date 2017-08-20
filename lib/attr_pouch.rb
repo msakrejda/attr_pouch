@@ -15,40 +15,42 @@ module AttrPouch
   def self.included(base)
     base.extend(ClassMethods)
     # we can't just independently define this in ClassMethods since
-    # `def_dataset_method` is only defined on Sequel::Model subclasses
-    base.def_dataset_method(:where_pouch) do |pouch_field, expr_hash|
-      ds = self
-      pouch = model.pouch(pouch_field)
-      if pouch.nil?
-        raise ArgumentError,
-              "No pouch defined for #{pouch_field}"
-      end
-      if pouch.json?
-        raise UnsupportedError, "Dataset queries not supported for columns of type json"
-      end
-
-      expr_hash.each do |key, value|
-        key = key.to_s
-        field = pouch.field_definition(key)
-        if field.nil?
+    # `dataset_module` is only defined on Sequel::Model subclasses
+    base.dataset_module do
+      define_method(:where_pouch) do |pouch_field, expr_hash|
+        ds = self
+        pouch = model.pouch(pouch_field)
+        if pouch.nil?
           raise ArgumentError,
-                "No field #{key} defined for pouch #{pouch_field}"
+                "No pouch defined for #{pouch_field}"
+        end
+        if pouch.json?
+          raise UnsupportedError, "Dataset queries not supported for columns of type json"
         end
 
-        if value.respond_to?(:each)
-          value.each_with_index do |v,i|
-            condition = pouch.store.contains(pouch.wrap(key => field.encode(v)))
-            ds = i == 0 ? ds.where(condition) : ds.or(condition)
+        expr_hash.each do |key, value|
+          key = key.to_s
+          field = pouch.field_definition(key)
+          if field.nil?
+            raise ArgumentError,
+                  "No field #{key} defined for pouch #{pouch_field}"
           end
-        elsif value.nil?
-          ds = ds.where(pouch.store.has_key?(key) => false)
-               .or(pouch.store.contains(pouch.wrap(key => field.encode(value))))
-        else
-          ds = ds.where(pouch.store
-                         .contains(pouch.wrap(key => field.encode(value))))
+
+          if value.respond_to?(:each)
+            value.each_with_index do |v,i|
+              condition = pouch.store.contains(pouch.wrap(key => field.encode(v)))
+              ds = i == 0 ? ds.where(condition) : ds.or(condition)
+            end
+          elsif value.nil?
+            ds = ds.where(pouch.store.has_key?(key) => false)
+                .or(pouch.store.contains(pouch.wrap(key => field.encode(value))))
+          else
+            ds = ds.where(pouch.store
+                          .contains(pouch.wrap(key => field.encode(value))))
+          end
         end
+        ds
       end
-      ds
     end
   end
 
