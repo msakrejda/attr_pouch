@@ -31,5 +31,8 @@ DEPENDENCIES
   rspec (~> 3.0)
   sequel (~> 4.13)
 
+RUBY VERSION
+   ruby 2.4.1p111
+
 BUNDLED WITH
-   1.10.6
+   1.14.6
