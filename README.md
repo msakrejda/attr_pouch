@@ -230,7 +230,7 @@ abbas.lucky = false # raises ImmutableFieldUpdateError
 
 #### Renaming fields
 
-Fields can be renamed by providing an a previous name or array of
+Fields can be renamed by providing a previous name or an array of
 previous names under the `was` option.
 
 ```ruby
@@ -245,7 +245,7 @@ end
 
 nils = User[name: 'nils'] # in db we have `{ ssl?: true, byzantion?: true }`
 nils.tls?                 # true
-nils.constantinople?      # true
+nils.istanbul?            # true
 ```
 
 Note that no direct accessors are defined for the old names, and if
@@ -253,10 +253,11 @@ the value is updated, it is written under the new name and any old
 values in the pouch are deleted:
 
 ```ruby
+nils.byzantion?       # raises NoMethodError
 nils.istanbul = false
-nils.tls?         # true
-nils.instanbul?   # false
-nils.save_changes # now in db as `{ tls?: true, instanbul?: false }`
+nils.tls?             # true
+nils.instanbul?       # false
+nils.save_changes     # now in db as `{ tls?: true, instanbul?: false }`
 ```
 
 #### Raw value access
