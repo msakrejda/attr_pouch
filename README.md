@@ -264,12 +264,12 @@ nils.save_changes     # now in db as `{ tls?: true, instanbul?: false }`
 
 Any field can be accessed directly, bypassing the encoder and decoder,
 by specifying the `raw_field` option to provide the name of the setter
-and getter that will directly manipulate the underlying value.
-Required fields are still required when read via `raw_field`, and
-immutable fields are still immutable, but if a `default` is set, the
-raw value will be `nil`, rather than the default itself, to allow the
-user to distinguish between a field value equal to the default and an
-absent field value deferring to the default:
+and getter that will be created to manipulate the underlying value
+directly. Required fields are still required when read via
+`raw_field`, and immutable fields are still immutable, but if a
+`default` is set, the raw value will be `nil`, rather than the default
+itself, to allow the user to distinguish between a field value equal
+to the default and an absent field value deferring to the default:
 
 ```ruby
 class User < Sequel::Model
