@@ -57,6 +57,14 @@ describe AttrPouch do
           expect(pouchy.foo).to eq('bar')
         end
 
+        it "has different object IDs for different object pouches" do
+          pouchy1 = pouchy.class.new(foo: "bar")
+          pouchy2 = pouchy.class.new(foo: "baz")
+          pouch1_id = pouchy1.send(column_name).object_id
+          pouch2_id = pouchy2.send(column_name).object_id
+          expect(pouch1_id).not_to eq(pouch2_id)
+        end
+
         it "avoids marking the field as modified if it is not changing" do
           pouchy.foo = 'bar'
           expect(pouchy.save_changes).to_not be_nil
