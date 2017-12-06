@@ -308,10 +308,6 @@ module AttrPouch
       end
     end
 
-    def default_pouch
-      wrap({})
-    end
-
     def field(name, opts={})
       unless VALID_FIELD_NAME_REGEXP.match(name)
         raise InvalidFieldError, "Field name must match #{VALID_FIELD_NAME_REGEXP}"
@@ -321,7 +317,7 @@ module AttrPouch
       @fields[name.to_s] = field
 
       storage_field = @storage_field
-      default = default_pouch
+      default_store = wrap({})
 
       @host.class_eval do
         define_method(name) do
@@ -332,7 +328,7 @@ module AttrPouch
         define_method("#{name.to_s.sub(/\?\z/, '')}=") do |value|
           store = self[storage_field]
           was_nil = store.nil?
-          store = default.dup if was_nil
+          store = default_store.dup if was_nil
           changed = field.write(store, value)
           if was_nil
             self[storage_field] = store
@@ -368,7 +364,7 @@ module AttrPouch
           define_method("#{raw_name.to_s.sub(/\?\z/, '')}=") do |value|
             store = self[storage_field]
             was_nil = store.nil?
-            store = default.dup if was_nil
+            store = default_store.dup if was_nil
             changed = field.write(store, value, encode: false)
             if was_nil
               self[storage_field] = store
