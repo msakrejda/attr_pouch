@@ -332,7 +332,7 @@ module AttrPouch
         define_method("#{name.to_s.sub(/\?\z/, '')}=") do |value|
           store = self[storage_field]
           was_nil = store.nil?
-          store = default if was_nil
+          store = default.dup if was_nil
           changed = field.write(store, value)
           if was_nil
             self[storage_field] = store
@@ -368,7 +368,7 @@ module AttrPouch
           define_method("#{raw_name.to_s.sub(/\?\z/, '')}=") do |value|
             store = self[storage_field]
             was_nil = store.nil?
-            store = default if was_nil
+            store = default.dup if was_nil
             changed = field.write(store, value, encode: false)
             if was_nil
               self[storage_field] = store
