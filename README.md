@@ -310,11 +310,11 @@ class User < Sequel::Model
 end
 
 # match on multiple fields
-User.where_pouch(bff: User[name: 'georgia'], favorite_color: 'goldenrod').all
+User.where_pouch(:preferences, bff: User[name: 'georgia'], favorite_color: 'goldenrod').all
 # match on multiple values
-User.where_pouch(favorite_color: [ 'gray', 'dark gray', 'black' ]).all
+User.where_pouch(:preferences, favorite_color: [ 'gray', 'dark gray', 'black' ]).all
 # check for nil value (or absence of key)
-User.where_pouch(bff: nil).all
+User.where_pouch(:preferences, bff: nil).all
 ```
 
 Note that you can speed up your queries considerably by adding an
